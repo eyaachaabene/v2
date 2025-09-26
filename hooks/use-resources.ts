@@ -4,16 +4,46 @@ import { useState, useEffect } from "react"
 
 export interface Resource {
   _id: string
-  title: string
+  name: string
   description: string
-  type: string
   category: string
-  provider: {
-    profile: {
-      firstName: string
-      lastName: string
+  type: string
+  images: string[]
+  pricing: {
+    price: number
+    unit: string
+    currency: string
+    minimumOrder: number
+    bulkDiscounts?: {
+      quantity: number
+      discountPercentage: number
+    }[]
+  }
+  specifications: {
+    brand: string
+    model: string
+    manufacturer: string
+    weight?: number
+    dimensions?: {
+      length: number
+      width: number
+      height: number
+      unit: string
     }
-    role: string
+    activeIngredients?: string[]
+    composition?: any
+    applicationMethod?: string
+    safetyPeriod?: string
+    certifications: string[]
+  }
+  availability: {
+    status: string
+    quantity: number
+    leadTime: string
+    shippingInfo: {
+      methods: string[]
+      costs: any
+    }
   }
   location: {
     governorate: string
@@ -22,34 +52,31 @@ export interface Resource {
       lat: number
       lng: number
     }
-    remote: boolean
   }
-  compensation: {
-    type: string
-    amount: number
-    currency: string
-    period: string
-    benefits: string[]
+  supplier: {
+    profile: {
+      firstName: string
+      lastName: string
+    }
+    role: string
   }
-  requirements: {
-    experience: string
-    skills: string[]
-    education: string
+  ratings: {
+    averageRating: number
+    totalReviews: number
+    ratingDistribution: {
+      5: number
+      4: number
+      3: number
+      2: number
+      1: number
+    }
   }
-  schedule: {
-    startDate: string
-    endDate: string
-    duration: string
-    workingHours: string
-    flexible: boolean
-  }
-  status: string
   tags: string[]
   createdAt: string
   updatedAt: string
 }
 
-export function useResources() {
+export function useResources(category?: string, governorate?: string) {
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -82,7 +109,6 @@ export function useResources() {
 
     fetchResources()
   }, [category, governorate])
-  }, [])
 
   return { 
     resources, 

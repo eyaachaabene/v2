@@ -36,7 +36,7 @@ export interface Product {
   updatedAt: string
 }
 
-export function useProducts() {
+export function useProducts(category?: string, governorate?: string) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -69,7 +69,6 @@ export function useProducts() {
 
     fetchProducts()
   }, [category, governorate])
-  }, [])
 
   return { 
     products, 

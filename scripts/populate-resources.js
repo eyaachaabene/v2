@@ -385,7 +385,10 @@ async function populateResources() {
     // Add supplier ID to resources
     const resourcesWithSupplier = sampleResources.map(resource => ({
       ...resource,
-      supplierId
+      supplierId: new ObjectId(supplierId),
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     }));
 
     // Insert resources

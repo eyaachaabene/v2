@@ -127,62 +127,18 @@ export default function MarketplacePage() {
 	const [selectedRegion, setSelectedRegion] = useState("all")
 	const [activeTab, setActiveTab] = useState("products")
 
-	const [products, setProducts] = useState<Product[]>([])
-	const [resources, setResources] = useState<Resource[]>([])
-	const [loading, setLoading] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-
-	// Handle filter changes
-	useEffect(() => {
-		const fetchData = async () => {
-			setLoading(true)
-			try {
-				// Build URL with filter parameters
-				const url = new URL(`/api/${activeTab}`, window.location.origin)
-				
-				// Only add valid filter parameters
-				if (selectedCategory && selectedCategory !== 'all') {
-					url.searchParams.set('category', selectedCategory)
-				}
-				if (selectedRegion && selectedRegion !== 'all') {
-					url.searchParams.set('governorate', selectedRegion)
-				}
-
-				console.log(`Fetching ${activeTab} with params:`, {
-					category: selectedCategory !== 'all' ? selectedCategory : null,
-					governorate: selectedRegion !== 'all' ? selectedRegion : null,
-					searchParams: Object.fromEntries(url.searchParams.entries()),
-					url: url.toString()
-				})
-
-				const response = await fetch(url)
-				if (!response.ok) throw new Error(`Failed to fetch ${activeTab}`)
-				const data = await response.json()
-				
-				if (activeTab === 'products') {
-					setProducts(data.products)
-					setError(null)
-				} else {
-					setResources(data.resources)
-					setError(null)
-				}
-			} catch (error) {
-				console.error(`Error fetching ${activeTab}:`, error)
-				setError(error instanceof Error ? error.message : "An error occurred")
-				if (activeTab === 'products') {
-					setProducts([])
-				} else {
-					setResources([])
-				}
-			} finally {
-				setLoading(false)
-			}
-		}
-
-		fetchData()
-	}, [selectedCategory, selectedRegion, activeTab])
+	// Use the hooks for data fetching
+	const { products, loading: productsLoading, error: productsError } = useProducts(
+		activeTab === "products" ? selectedCategory : "all",
+		activeTab === "products" ? selectedRegion : "all"
+	)
+	const { resources, loading: resourcesLoading, error: resourcesError } = useResources(
+		activeTab === "resources" ? selectedCategory : "all",
+		activeTab === "resources" ? selectedRegion : "all"
+	)
 	
-	// Loading and error states are handled in the useEffect hook
+	const loading = productsLoading || resourcesLoading
+	const error = productsError || resourcesError
 
 	const productCategories = [
 		"all",
@@ -204,11 +160,19 @@ export default function MarketplacePage() {
 		].filter(Boolean)))
 	];
 
+	// Filter products by search query
 	const filteredProducts = products.filter((product: Product) => {
-		const matchesSearch =
-			product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			product.farmer.name.toLowerCase().includes(searchQuery.toLowerCase())
-		return matchesSearch
+		if (!searchQuery) return true
+		return product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			   product.farmer.name.toLowerCase().includes(searchQuery.toLowerCase())
+	})
+
+	// Filter resources by search query
+	const filteredResources = resources.filter((resource: Resource) => {
+		if (!searchQuery) return true
+		return resource.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			   resource.specifications.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			   resource.type.toLowerCase().includes(searchQuery.toLowerCase())
 	})
 
 	if (loading) {
@@ -317,13 +281,7 @@ export default function MarketplacePage() {
 						</TabsTrigger>
 						<TabsTrigger value="resources" className="flex items-center gap-2">
 							<Heart className="h-4 w-4" />
-							Resources ({
-								Array.isArray(resources) ? 
-									resources.filter(r => 
-										(selectedCategory === "all" || r.category === selectedCategory) &&
-										(selectedRegion === "all" || r.location.governorate === selectedRegion)
-									).length : 0
-							})
+							Resources ({filteredResources.length})
 						</TabsTrigger>
 					</TabsList>
 
@@ -414,7 +372,7 @@ export default function MarketplacePage() {
 					</TabsContent>
 
 					<TabsContent value="resources">
-						{resources.length === 0 ? (
+						{filteredResources.length === 0 ? (
 							<div className="text-center py-12">
 								<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
 								<h3 className="text-lg font-medium mb-2">No resources found</h3>
@@ -424,11 +382,11 @@ export default function MarketplacePage() {
 							</div>
 						) : (
 							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-								{resources.map((resource) => (
+								{filteredResources.map((resource) => (
 									<Card key={resource._id} className="hover:shadow-lg transition-shadow">
 										<div className="aspect-video relative overflow-hidden rounded-t-lg">
 											<img
-												src={resource.images[0] || "/placeholder.svg?height=200&width=300&query=farm resource"}
+												src={resource.images?.[0]?.startsWith('http') ? resource.images[0] : resource.images?.[0] ? resource.images[0] : "/placeholder.svg?height=200&width=300&query=farm resource"}
 												alt={resource.name}
 												className="w-full h-full object-cover"
 											/>

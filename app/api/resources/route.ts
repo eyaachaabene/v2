@@ -18,11 +18,12 @@ export async function GET(request: NextRequest) {
     const resourcesCollection = db.collection<Resource>("resources")
 
     // Build query
-    const query: any = { isActive: true }
+    const query: any = {}
 
     console.log("Received governorate:", governorate)
     console.log("Received category:", category)
     console.log("Raw search params:", Object.fromEntries(searchParams.entries()))
+    console.log("Checking resources collection...")
 
     if (category && category !== "null" && category !== "undefined") {
       query.category = category
@@ -83,6 +84,9 @@ export async function GET(request: NextRequest) {
 
     // Get total count
     const total = await resourcesCollection.countDocuments(query)
+    
+    console.log("Found resources:", resources.length)
+    console.log("Total count:", total)
 
     return NextResponse.json({
       resources,
