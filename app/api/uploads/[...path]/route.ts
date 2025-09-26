@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    const filePath = join(process.cwd(), "public/uploads", ...params.path)
+    const filePath = join(process.cwd(), "public", ...params.path)
 
     // Check if file exists
     try {

@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { X, Upload, Image as ImageIcon } from "lucide-react"
 
 interface AddProductFormProps {
   onProductAdded: () => void
@@ -41,11 +42,64 @@ export function AddProductForm({ onProductAdded, farmerName, location }: AddProd
         longitude: 0
       }
     },
-    tags: []
+    tags: [],
+    images: [] as string[]
   })
 
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    setIsUploading(true)
+    
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "Upload failed")
+        }
+
+        const result = await response.json()
+        return result.filename
+      })
+
+      const newImagePaths = await Promise.all(uploadPromises)
+      const updatedImages = [...uploadedImages, ...newImagePaths]
+      
+      setUploadedImages(updatedImages)
+      setFormData({ ...formData, images: updatedImages })
+      
+      toast.success(`${files.length} image(s) uploaded successfully!`)
+    } catch (error) {
+      console.error("Upload error:", error)
+      toast.error("Failed to upload images. Please try again.")
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
+  const removeImage = (index: number) => {
+    const updatedImages = uploadedImages.filter((_, i) => i !== index)
+    setUploadedImages(updatedImages)
+    setFormData({ ...formData, images: updatedImages })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -100,8 +154,10 @@ export function AddProductForm({ onProductAdded, farmerName, location }: AddProd
             longitude: 0
           }
         },
-        tags: []
+        tags: [],
+        images: []
       })
+      setUploadedImages([])
       setIsOpen(false)
       onProductAdded()
     } catch (error) {
@@ -145,6 +201,79 @@ export function AddProductForm({ onProductAdded, farmerName, location }: AddProd
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Product Images</label>
+            <div className="space-y-3">
+              {/* Upload Button */}
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="flex items-center gap-2"
+                >
+                  {isUploading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      Add Images
+                    </>
+                  )}
+                </Button>
+                <span className="text-xs text-gray-500">
+                  Max 5MB per file. JPG, PNG, GIF, WebP supported.
+                </span>
+              </div>
+
+              {/* Hidden File Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+
+              {/* Image Preview */}
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {uploadedImages.map((imagePath, index) => (
+                    <div key={index} className="relative group">
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border">
+                        <img
+                          src={imagePath}
+                          alt={`Product image ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {uploadedImages.length === 0 && (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No images uploaded yet</p>
+                  <p className="text-xs text-gray-400">Click "Add Images" to upload product photos</p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

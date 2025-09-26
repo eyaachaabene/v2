@@ -234,7 +234,8 @@ export default function MarketplacePage() {
 							<AddProductForm
 								farmerName={`${user?.profile?.firstName || ''} ${user?.profile?.lastName || ''}`}
 								location={{
-									governorate: selectedRegion !== 'all' ? selectedRegion : user?.profile?.location || ''
+									governorate: selectedRegion !== 'all' ? selectedRegion : user?.profile?.location?.governorate || '',
+									city: user?.profile?.location?.city || ''
 								}}
 								onProductAdded={() => window.location.reload()}
 							/>
@@ -325,20 +326,20 @@ export default function MarketplacePage() {
 									<Card key={product._id} className="hover:shadow-lg transition-shadow">
 										<div className="aspect-video relative overflow-hidden rounded-t-lg">
 											<img
-												src={product.images?.[0]?.startsWith('http') ? product.images[0] : product.images?.[0] ? `/uploads/${product.images[0]}` : "/placeholder.svg?height=200&width=300&query=farm product"}
+												src={product.images?.[0]?.startsWith('http') ? product.images[0] : product.images?.[0] ? (product.images[0].startsWith('/') ? product.images[0] : `/uploads/${product.images[0]}`) : "/placeholder.svg?height=200&width=300&query=farm product"}
 												alt={product.name}
 												className="w-full h-full object-cover"
 											/>
 											<Badge
 												className={`absolute top-3 right-3 ${
-													product.availability.status === "In Stock"
+													product.availability?.status === "In Stock"
 														? "bg-green-100 text-green-800"
-														: product.availability.status === "Limited"
+														: product.availability?.status === "Limited"
 														? "bg-yellow-100 text-yellow-800"
 														: "bg-red-100 text-red-800"
 												}`}
 											>
-												{product.availability.status}
+												{product.availability?.status || 'Unknown'}
 											</Badge>
 										</div>
 										<CardContent className="p-6">
@@ -350,31 +351,31 @@ export default function MarketplacePage() {
 
 												<div className="flex items-center gap-2 text-sm text-muted-foreground">
 													<Sprout className="h-4 w-4" />
-													<span>{product.farmer.name}</span>
+													<span>{product.farmer?.name || 'Unknown Farmer'}</span>
 													<span>•</span>
 													<MapPin className="h-4 w-4" />
-													<span>{product.location.governorate}</span>
+													<span>{product.location?.governorate || 'Unknown Location'}</span>
 												</div>
 
 												<div className="flex items-center gap-2">
 													<div className="flex items-center gap-1">
 														<Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-														<span className="text-sm font-medium">{product.farmer.rating}</span>
-														<span className="text-sm text-muted-foreground">({product.farmer.reviews})</span>
+														<span className="text-sm font-medium">{product.farmer?.rating || 0}</span>
+														<span className="text-sm text-muted-foreground">({product.farmer?.reviews || 0})</span>
 													</div>
 												</div>
 
 												<div className="flex flex-wrap gap-1">
-													{product.tags.map((tag: string) => (
+													{product.tags?.map((tag: string) => (
 														<Badge key={tag} variant="secondary" className="text-xs">
 															{tag}
 														</Badge>
-													))}
+													)) || null}
 												</div>
 
 												<div className="flex items-center justify-between pt-3 border-t">
 													<span className="text-xl font-bold text-primary">
-														{product.pricing.price} {product.pricing.currency}/{product.pricing.unit}
+														{product.pricing?.price || 0} {product.pricing?.currency || 'TND'}/{product.pricing?.unit || 'kg'}
 													</span>
 													<div className="flex gap-2">
 														<Button size="sm" variant="outline">
@@ -409,20 +410,20 @@ export default function MarketplacePage() {
 									<Card key={resource._id} className="hover:shadow-lg transition-shadow">
 										<div className="aspect-video relative overflow-hidden rounded-t-lg">
 											<img
-												src={resource.images?.[0]?.startsWith('http') ? resource.images[0] : resource.images?.[0] ? `/uploads/${resource.images[0]}` : "/placeholder.svg?height=200&width=300&query=farm resource"}
+												src={resource.images?.[0]?.startsWith('http') ? resource.images[0] : resource.images?.[0] ? (resource.images[0].startsWith('/') ? resource.images[0] : `/uploads/${resource.images[0]}`) : "/placeholder.svg?height=200&width=300&query=farm resource"}
 												alt={resource.name}
 												className="w-full h-full object-cover"
 											/>
 											<Badge
 												className={`absolute top-3 right-3 ${
-													resource.availability.status === "In Stock"
+													resource.availability?.status === "In Stock"
 														? "bg-green-100 text-green-800"
-														: resource.availability.status === "Limited"
+														: resource.availability?.status === "Limited"
 														? "bg-yellow-100 text-yellow-800"
 														: "bg-red-100 text-red-800"
 												}`}
 											>
-												{resource.availability.status}
+												{resource.availability?.status || 'Unknown'}
 											</Badge>
 										</div>
 										<CardContent className="p-6">
@@ -434,26 +435,26 @@ export default function MarketplacePage() {
 
 												<div className="flex items-center gap-2 text-sm text-muted-foreground">
 													<Package className="h-4 w-4" />
-													<span>{resource.type}</span>
+													<span>{resource.type || 'Unknown Type'}</span>
 													<span>•</span>
 													<MapPin className="h-4 w-4" />
-													<span>{resource.location.governorate}</span>
+													<span>{resource.location?.governorate || 'Unknown Location'}</span>
 												</div>
 
 												<div className="flex items-center gap-2">
 													<div className="flex items-center gap-1">
 														<Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-														<span className="text-sm font-medium">{resource.ratings.averageRating}</span>
-														<span className="text-sm text-muted-foreground">({resource.ratings.totalReviews})</span>
+														<span className="text-sm font-medium">{resource.ratings?.averageRating || 0}</span>
+														<span className="text-sm text-muted-foreground">({resource.ratings?.totalReviews || 0})</span>
 													</div>
 												</div>
 
 												<div className="text-sm space-y-2">
 													<div>
 														<span className="text-muted-foreground">Brand: </span>
-														<span className="font-medium">{resource.specifications.brand}</span>
+														<span className="font-medium">{resource.specifications?.brand || 'Unknown'}</span>
 													</div>
-													{resource.specifications.certifications?.length > 0 && (
+													{resource.specifications?.certifications?.length > 0 && (
 														<div>
 															<span className="text-muted-foreground">Certifications: </span>
 															<span className="font-medium">{resource.specifications.certifications.join(", ")}</span>
@@ -462,21 +463,21 @@ export default function MarketplacePage() {
 												</div>
 
 												<div className="flex flex-wrap gap-1">
-													{resource.tags.map((tag: string) => (
+													{resource.tags?.map((tag: string) => (
 														<Badge key={tag} variant="secondary" className="text-xs">
 															{tag}
 														</Badge>
-													))}
+													)) || null}
 												</div>
 
 												<div className="flex items-center justify-between pt-3 border-t">
 													<div className="space-y-1">
 														<span className="text-xl font-bold text-primary">
-															{resource.pricing.price} {resource.pricing.currency}/{resource.pricing.unit}
+															{resource.pricing?.price || 0} {resource.pricing?.currency || 'TND'}/{resource.pricing?.unit || 'piece'}
 														</span>
-														{resource.pricing.minimumOrder > 1 && (
+														{(resource.pricing?.minimumOrder || 0) > 1 && (
 															<p className="text-xs text-muted-foreground">
-																Min. order: {resource.pricing.minimumOrder} {resource.pricing.unit}
+																Min. order: {resource.pricing.minimumOrder} {resource.pricing?.unit || 'piece'}
 															</p>
 														)}
 													</div>
