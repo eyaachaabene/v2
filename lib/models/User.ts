@@ -21,6 +21,7 @@ export interface User {
     dateOfBirth?: Date
     gender?: string
     languages: string[]
+    interests: string[]
   }
   farmerProfile?: {
     farmName: string

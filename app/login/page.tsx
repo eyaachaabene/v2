@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sprout } from "lucide-react"
 import Link from "next/link"
-import { signIn } from "@/lib/auth"
+import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { login } = useAuth()
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +26,24 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      await signIn(email, password)
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+
+      // Store auth token and user data
+      localStorage.setItem('auth_token', data.token)
+      localStorage.setItem('user_profile', JSON.stringify(data.user))
+
+      toast({
+        title: "Success",
+        description: "Successfully signed in"
+      })
+
       router.push("/dashboard")
     } catch (error: any) {
       toast({

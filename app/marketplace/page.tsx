@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { toast } from "sonner"
+import { type UserProfile } from "@/lib/auth"
 
 interface Product {
   _id: string
@@ -113,19 +115,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, MapPin, Star, MessageCircle, Phone, Sprout, Package, Users, Heart } from "lucide-react"
+import { Search, MapPin, Star, MessageCircle, Phone, Sprout, Package, Users, Heart, Plus } from "lucide-react"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { ChatbotWidget } from "@/components/chatbot-widget"
 import { useProducts } from "@/hooks/use-products"
 import { useResources } from "@/hooks/use-resources"
+import { AddProductForm } from "@/components/add-product-form"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function MarketplacePage() {
+	const { user, profile } = useAuth()
 	const [searchQuery, setSearchQuery] = useState("")
 	const [selectedCategory, setSelectedCategory] = useState("all")
 	const [selectedRegion, setSelectedRegion] = useState("all")
 	const [activeTab, setActiveTab] = useState("products")
+
+
+
+
 
 	// Use the hooks for data fetching
 	const { products, loading: productsLoading, error: productsError } = useProducts(
@@ -212,11 +222,24 @@ export default function MarketplacePage() {
 			<DashboardNav />
 			<div className="container mx-auto px-4 py-6">
 				{/* Header */}
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold text-foreground mb-2">Marketplace</h1>
-					<p className="text-muted-foreground">
-						Discover fresh products from local farmers and connect with agricultural resources
-					</p>
+				<div className="mb-8 flex justify-between items-center">
+					<div>
+						<h1 className="text-3xl font-bold text-foreground mb-2">Marketplace</h1>
+						<p className="text-muted-foreground">
+							Discover fresh products from local farmers and connect with agricultural resources
+						</p>
+					</div>
+					<div>
+						{user?.role === 'farmer' && activeTab === 'products' && (
+							<AddProductForm
+								farmerName={`${user?.profile?.firstName || ''} ${user?.profile?.lastName || ''}`}
+								location={{
+									governorate: selectedRegion !== 'all' ? selectedRegion : user?.profile?.location || ''
+								}}
+								onProductAdded={() => window.location.reload()}
+							/>
+						)}
+					</div>
 				</div>
 
 				{/* Search and Filters */}
@@ -302,7 +325,7 @@ export default function MarketplacePage() {
 									<Card key={product._id} className="hover:shadow-lg transition-shadow">
 										<div className="aspect-video relative overflow-hidden rounded-t-lg">
 											<img
-												src={product.images[0] || "/placeholder.svg?height=200&width=300&query=farm product"}
+												src={product.images?.[0]?.startsWith('http') ? product.images[0] : product.images?.[0] ? `/uploads/${product.images[0]}` : "/placeholder.svg?height=200&width=300&query=farm product"}
 												alt={product.name}
 												className="w-full h-full object-cover"
 											/>
@@ -386,7 +409,7 @@ export default function MarketplacePage() {
 									<Card key={resource._id} className="hover:shadow-lg transition-shadow">
 										<div className="aspect-video relative overflow-hidden rounded-t-lg">
 											<img
-												src={resource.images?.[0]?.startsWith('http') ? resource.images[0] : resource.images?.[0] ? resource.images[0] : "/placeholder.svg?height=200&width=300&query=farm resource"}
+												src={resource.images?.[0]?.startsWith('http') ? resource.images[0] : resource.images?.[0] ? `/uploads/${resource.images[0]}` : "/placeholder.svg?height=200&width=300&query=farm resource"}
 												alt={resource.name}
 												className="w-full h-full object-cover"
 											/>

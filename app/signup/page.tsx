@@ -61,17 +61,31 @@ export default function SignupPage() {
     setLoading(true)
 
     try {
-      await signUp(formData.email, formData.password, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        userType: selectedRole,
-        location: formData.location,
-        phone: formData.phone,
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          role: selectedRole,
+          location: formData.location,
+          phone: formData.phone,
+          interests: selectedTags
+        })
       })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+
+      // Store auth token and user data
+      localStorage.setItem('auth_token', data.token)
+      localStorage.setItem('user_profile', JSON.stringify(data.user))
 
       toast({
         title: "Success",
-        description: "Account created successfully! Please check your email to verify your account.",
+        description: "Account created successfully! You can now log in.",
       })
 
       router.push("/login")

@@ -1,38 +1,85 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { type User, onAuthStateChanged } from "firebase/auth"
-import { auth } from "@/lib/firebase"
-import { getUserProfile, type UserProfile } from "@/lib/auth"
+import { type UserProfile } from "@/lib/auth"
+
+interface AuthState {
+  user: any
+  profile: UserProfile | null
+  loading: boolean
+  token: string | null
+}
 
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    profile: null,
+    loading: true,
+    token: null
+  })
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user)
+    const token = localStorage.getItem('auth_token')
+    const storedProfile = localStorage.getItem('user_profile')
 
-      if (user) {
-        try {
-          const userProfile = await getUserProfile(user.uid)
-          setProfile(userProfile)
-        } catch (error) {
-          console.error("[v0] Failed to fetch user profile:", error)
-          setProfile(null)
-        }
-      } else {
-        setProfile(null)
+    if (token && storedProfile) {
+      try {
+        const profile = JSON.parse(storedProfile)
+        setAuthState({
+          user: profile,
+          profile,
+          loading: false,
+          token
+        })
+      } catch (error) {
+        console.error("[v0] Failed to parse stored profile:", error)
+        setAuthState({ user: null, profile: null, loading: false, token: null })
       }
-
-      setLoading(false)
-    })
-
-    return () => {
-      unsubscribe()
+    } else {
+      setAuthState({ user: null, profile: null, loading: false, token: null })
     }
   }, [])
 
-  return { user, profile, loading }
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+
+      localStorage.setItem('auth_token', data.token)
+      localStorage.setItem('user_profile', JSON.stringify(data.user))
+
+      setAuthState({
+        user: data.user,
+        profile: data.user,
+        loading: false,
+        token: data.token
+      })
+
+      return data
+    } catch (error) {
+      console.error("[v0] Login error:", error)
+      throw error
+    }
+  }
+
+  const logout = () => {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('user_profile')
+    setAuthState({ user: null, profile: null, loading: false, token: null })
+  }
+
+  return { 
+    user: authState.user,
+    profile: authState.profile,
+    loading: authState.loading,
+    token: authState.token,
+    login,
+    logout
+  }
 }
