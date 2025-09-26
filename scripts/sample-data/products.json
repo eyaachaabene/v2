@@ -1,0 +1,162 @@
+{
+  "products": [
+    {
+      "_id": {"$oid": "65001b234d6f8e1234567892"},
+      "name": "Organic Tomatoes",
+      "description": "Fresh, locally grown organic tomatoes perfect for salads and cooking",
+      "category": "Vegetables",
+      "subcategory": "Fresh Produce",
+      "farmerId": {"$oid": "65001a234d6f8e1234567890"},
+      "images": [
+        "/fresh-red-tomatoes.jpg",
+        "/organic-tomatoes.png"
+      ],
+      "pricing": {
+        "price": 3.5,
+        "unit": "kg",
+        "currency": "TND",
+        "minimumOrder": 1,
+        "bulkDiscounts": [
+          {
+            "quantity": 5,
+            "discountPercentage": 10
+          },
+          {
+            "quantity": 10,
+            "discountPercentage": 15
+          }
+        ]
+      },
+      "availability": {
+        "status": "In Stock",
+        "quantity": 100,
+        "harvestDate": {"$date": "2025-09-20T00:00:00Z"},
+        "expiryDate": {"$date": "2025-10-05T00:00:00Z"},
+        "seasonalAvailability": {
+          "startMonth": 3,
+          "endMonth": 11
+        }
+      },
+      "quality": {
+        "organic": true,
+        "certifications": ["Organic", "Local Farm"],
+        "gradeLevel": "Premium",
+        "qualityScore": 95
+      },
+      "location": {
+        "governorate": "Nabeul",
+        "city": "Korba",
+        "coordinates": {
+          "latitude": 36.5731,
+          "longitude": 10.8586
+        }
+      },
+      "specifications": {
+        "origin": "Local Farm",
+        "processingMethod": "Hand Picked",
+        "storageConditions": "Cool and dry place",
+        "shelfLife": "7-10 days",
+        "nutritionalInfo": {
+          "calories": 22,
+          "vitamins": ["A", "C", "K"],
+          "minerals": ["Potassium", "Folate"]
+        }
+      },
+      "tags": ["organic", "fresh", "local", "vegetables", "tomatoes"],
+      "ratings": {
+        "averageRating": 4.8,
+        "totalReviews": 24,
+        "ratingDistribution": {
+          "5": 18,
+          "4": 4,
+          "3": 2,
+          "2": 0,
+          "1": 0
+        }
+      },
+      "seo": {
+        "slug": "organic-tomatoes",
+        "metaTitle": "Fresh Organic Tomatoes",
+        "metaDescription": "Fresh, locally grown organic tomatoes from our farm in Nabeul. Perfect for salads and cooking."
+      },
+      "isActive": true,
+      "createdAt": {"$date": "2025-09-20T10:00:00Z"},
+      "updatedAt": {"$date": "2025-09-20T10:00:00Z"}
+    },
+    {
+      "_id": {"$oid": "65001b234d6f8e1234567893"},
+      "name": "Premium Olive Oil",
+      "description": "Extra virgin olive oil from centuries-old olive groves",
+      "category": "Oils",
+      "subcategory": "Cooking Oils",
+      "farmerId": {"$oid": "65001a234d6f8e1234567890"},
+      "images": [
+        "/olive-oil-bottles.png",
+        "/olive-harvest.jpg"
+      ],
+      "pricing": {
+        "price": 25,
+        "unit": "liter",
+        "currency": "TND",
+        "minimumOrder": 1,
+        "bulkDiscounts": [
+          {
+            "quantity": 3,
+            "discountPercentage": 10
+          }
+        ]
+      },
+      "availability": {
+        "status": "In Stock",
+        "quantity": 50,
+        "harvestDate": {"$date": "2025-08-15T00:00:00Z"},
+        "expiryDate": {"$date": "2026-08-15T00:00:00Z"}
+      },
+      "quality": {
+        "organic": true,
+        "certifications": ["Extra Virgin", "Organic"],
+        "gradeLevel": "Premium",
+        "qualityScore": 98
+      },
+      "location": {
+        "governorate": "Sfax",
+        "city": "Sfax",
+        "coordinates": {
+          "latitude": 34.7398,
+          "longitude": 10.7600
+        }
+      },
+      "specifications": {
+        "origin": "Traditional Olive Grove",
+        "processingMethod": "Cold Pressed",
+        "storageConditions": "Cool and dark place",
+        "shelfLife": "12 months",
+        "nutritionalInfo": {
+          "calories": 120,
+          "fats": "13g",
+          "antioxidants": "High"
+        }
+      },
+      "tags": ["olive oil", "organic", "extra virgin", "premium", "cooking"],
+      "ratings": {
+        "averageRating": 4.9,
+        "totalReviews": 45,
+        "ratingDistribution": {
+          "5": 40,
+          "4": 5,
+          "3": 0,
+          "2": 0,
+          "1": 0
+        }
+      },
+      "seo": {
+        "slug": "premium-olive-oil",
+        "metaTitle": "Premium Extra Virgin Olive Oil",
+        "metaDescription": "Traditional extra virgin olive oil from century-old groves in Sfax. Cold-pressed and organic certified."
+      },
+      "isActive": true,
+      "createdAt": {"$date": "2025-09-15T08:00:00Z"},
+      "updatedAt": {"$date": "2025-09-15T08:00:00Z"}
+    }
+  ]
+}

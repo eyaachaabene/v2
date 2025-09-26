@@ -1,0 +1,86 @@
+{
+  "opportunities": [
+    {
+      "_id": {"$oid": "65001e234d6f8e1234567898"},
+      "title": "Seasonal Tomato Harvest Workers Needed",
+      "description": "Looking for experienced workers for tomato harvesting season. Training provided for new workers.",
+      "type": "seasonal_work",
+      "postedBy": {"$oid": "65001a234d6f8e1234567890"},
+      "postedByType": "farmer",
+      "location": {
+        "governorate": "Nabeul",
+        "city": "Korba",
+        "coordinates": {
+          "latitude": 36.5731,
+          "longitude": 10.8586
+        }
+      },
+      "compensation": {
+        "type": "daily",
+        "amount": 45,
+        "currency": "TND",
+        "benefits": ["Lunch provided", "Transport available"]
+      },
+      "duration": {
+        "type": "weeks",
+        "value": 3
+      },
+      "requirements": {
+        "skills": ["Physical fitness", "Basic agricultural knowledge"],
+        "experience": "No experience required",
+        "other": ["Must be able to work in hot weather", "Early morning starts"]
+      },
+      "applicationDeadline": {"$date": "2025-10-01T00:00:00Z"},
+      "startDate": {"$date": "2025-10-05T00:00:00Z"},
+      "endDate": {"$date": "2025-10-26T00:00:00Z"},
+      "maxApplicants": 10,
+      "currentApplicants": 3,
+      "status": "active",
+      "featured": true,
+      "urgent": false,
+      "createdAt": {"$date": "2025-09-20T10:00:00Z"},
+      "updatedAt": {"$date": "2025-09-20T10:00:00Z"}
+    },
+    {
+      "_id": {"$oid": "65001e234d6f8e1234567899"},
+      "title": "Organic Farming Workshop",
+      "description": "Learn organic farming techniques from experienced farmers. Practical hands-on training included.",
+      "type": "workshop",
+      "postedBy": {"$oid": "65001a234d6f8e1234567890"},
+      "postedByType": "farmer",
+      "location": {
+        "governorate": "Nabeul",
+        "city": "Korba",
+        "coordinates": {
+          "latitude": 36.5731,
+          "longitude": 10.8586
+        }
+      },
+      "compensation": {
+        "type": "certificate",
+        "amount": 150,
+        "currency": "TND",
+        "benefits": ["Certificate provided", "Lunch included", "Training materials"]
+      },
+      "duration": {
+        "type": "days",
+        "value": 2
+      },
+      "requirements": {
+        "skills": ["Basic gardening knowledge"],
+        "education": "No specific education required",
+        "other": ["Interest in organic farming"]
+      },
+      "applicationDeadline": {"$date": "2025-10-15T00:00:00Z"},
+      "startDate": {"$date": "2025-10-20T00:00:00Z"},
+      "endDate": {"$date": "2025-10-21T00:00:00Z"},
+      "maxApplicants": 20,
+      "currentApplicants": 8,
+      "status": "active",
+      "featured": false,
+      "urgent": false,
+      "createdAt": {"$date": "2025-09-15T14:00:00Z"},
+      "updatedAt": {"$date": "2025-09-15T14:00:00Z"}
+    }
+  ]
+}

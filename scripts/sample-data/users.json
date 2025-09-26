@@ -1,0 +1,113 @@
+{
+  "users": [
+    {
+      "_id": {"$oid": "65001a234d6f8e1234567890"},
+      "email": "sarah.farmer@example.com",
+      "password": "$2a$12$LQRpPiMqKmL7cOpv3Fn8S.2h1OYS4OpX4hrmGjhh6tCzI3.UCkPGe",
+      "role": "farmer",
+      "profile": {
+        "firstName": "Sarah",
+        "lastName": "Ben Ahmed",
+        "phone": "+216 55 123 456",
+        "avatar": "/farmer-avatar-1.jpg",
+        "location": {
+          "governorate": "Nabeul",
+          "city": "Korba",
+          "coordinates": {
+            "lat": 36.5731,
+            "lng": 10.8586
+          }
+        },
+        "dateOfBirth": {"$date": "1985-06-15T00:00:00Z"},
+        "gender": "female",
+        "languages": ["Arabic", "French", "English"]
+      },
+      "farmerProfile": {
+        "farmName": "Green Valley Organic Farm",
+        "farmSize": 5.5,
+        "farmingExperience": 8,
+        "specializations": ["Organic Vegetables", "Olive Oil", "Citrus"],
+        "certifications": ["Organic Farming", "Good Agricultural Practices"],
+        "farmLocation": {
+          "address": "Route de Tunis KM 5, Korba",
+          "coordinates": {
+            "lat": 36.5731,
+            "lng": 10.8586
+          }
+        },
+        "bankDetails": {
+          "accountNumber": "12345678",
+          "bankName": "Banque de Tunisie",
+          "iban": "TN59 1234 5678 9012 3456 78"
+        }
+      },
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true
+        },
+        "language": "fr",
+        "currency": "TND"
+      },
+      "verification": {
+        "emailVerified": true,
+        "phoneVerified": true,
+        "identityVerified": true,
+        "farmVerified": true
+      },
+      "isActive": true,
+      "createdAt": {"$date": "2025-09-12T10:00:00Z"},
+      "updatedAt": {"$date": "2025-09-12T10:00:00Z"},
+      "lastLogin": {"$date": "2025-09-26T08:30:00Z"}
+    },
+    {
+      "_id": {"$oid": "65001a234d6f8e1234567891"},
+      "email": "amira.buyer@example.com",
+      "password": "$2a$12$LQRpPiMqKmL7cOpv3Fn8S.2h1OYS4OpX4hrmGjhh6tCzI3.UCkPGe",
+      "role": "buyer",
+      "profile": {
+        "firstName": "Amira",
+        "lastName": "Mansour",
+        "phone": "+216 55 789 012",
+        "avatar": "/placeholder-user.jpg",
+        "location": {
+          "governorate": "Tunis",
+          "city": "Tunis",
+          "coordinates": {
+            "lat": 36.8065,
+            "lng": 10.1815
+          }
+        },
+        "dateOfBirth": {"$date": "1990-03-20T00:00:00Z"},
+        "gender": "female",
+        "languages": ["Arabic", "French"]
+      },
+      "buyerProfile": {
+        "companyName": "Green Foods Market",
+        "businessType": "Restaurant",
+        "taxId": "12345678",
+        "preferredProducts": ["Vegetables", "Fruits", "Olive Oil"],
+        "averageOrderValue": 250
+      },
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": false,
+          "push": true
+        },
+        "language": "ar",
+        "currency": "TND"
+      },
+      "verification": {
+        "emailVerified": true,
+        "phoneVerified": true,
+        "identityVerified": true
+      },
+      "isActive": true,
+      "createdAt": {"$date": "2025-09-15T14:30:00Z"},
+      "updatedAt": {"$date": "2025-09-15T14:30:00Z"},
+      "lastLogin": {"$date": "2025-09-26T09:15:00Z"}
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "iot_sensors": [
+    {
+      "_id": {"$oid": "65001c234d6f8e1234567894"},
+      "farmerId": {"$oid": "65001a234d6f8e1234567890"},
+      "sensorId": "SOIL001",
+      "name": "Tomato Field Soil Sensor",
+      "type": "soil_moisture",
+      "location": {
+        "fieldName": "Tomato Field North",
+        "coordinates": {
+          "lat": 36.5731,
+          "lng": 10.8586
+        },
+        "depth": 30
+      },
+      "specifications": {
+        "model": "AgroSense Pro X1",
+        "manufacturer": "TechFarm Solutions",
+        "installationDate": {"$date": "2025-05-15T00:00:00Z"},
+        "calibrationDate": {"$date": "2025-09-01T00:00:00Z"},
+        "batteryLevel": 85,
+        "signalStrength": 90
+      },
+      "thresholds": {
+        "min": 20,
+        "max": 80,
+        "optimal": {
+          "min": 40,
+          "max": 60
+        }
+      },
+      "status": "Online",
+      "isActive": true,
+      "createdAt": {"$date": "2025-05-15T10:00:00Z"},
+      "updatedAt": {"$date": "2025-09-26T08:00:00Z"}
+    },
+    {
+      "_id": {"$oid": "65001c234d6f8e1234567895"},
+      "farmerId": {"$oid": "65001a234d6f8e1234567890"},
+      "sensorId": "TEMP001",
+      "name": "Greenhouse Temperature Sensor",
+      "type": "temperature",
+      "location": {
+        "fieldName": "Main Greenhouse",
+        "coordinates": {
+          "lat": 36.5732,
+          "lng": 10.8587
+        }
+      },
+      "specifications": {
+        "model": "TempTrack 2000",
+        "manufacturer": "TechFarm Solutions",
+        "installationDate": {"$date": "2025-05-15T00:00:00Z"},
+        "calibrationDate": {"$date": "2025-09-01T00:00:00Z"},
+        "batteryLevel": 90,
+        "signalStrength": 95
+      },
+      "thresholds": {
+        "min": 15,
+        "max": 35,
+        "optimal": {
+          "min": 22,
+          "max": 28
+        }
+      },
+      "status": "Online",
+      "isActive": true,
+      "createdAt": {"$date": "2025-05-15T10:00:00Z"},
+      "updatedAt": {"$date": "2025-09-26T08:00:00Z"}
+    }
+  ]
+}
