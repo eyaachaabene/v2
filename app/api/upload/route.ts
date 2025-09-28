@@ -6,7 +6,7 @@ import { existsSync } from "fs"
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get("file") as File
+    const file = formData.get("file") as File || formData.get("image") as File
 
     if (!file) {
       return NextResponse.json(
@@ -36,8 +36,12 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
+    // Determine upload type based on form data
+    const isResource = formData.get("image") !== null
+    const uploadType = isResource ? "resources" : "products"
+    
     // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), "public", "uploads", "products")
+    const uploadsDir = join(process.cwd(), "public", "uploads", uploadType)
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true })
     }
@@ -52,7 +56,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filepath, buffer)
 
     // Return the relative path for use in the frontend
-    const relativePath = `/uploads/products/${filename}`
+    const relativePath = `/uploads/${uploadType}/${filename}`
 
     return NextResponse.json({
       success: true,

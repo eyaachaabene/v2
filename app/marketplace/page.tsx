@@ -3,40 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { type UserProfile } from "@/lib/auth"
-
-interface Product {
-  _id: string
-  name: string
-  description: string
-  pricing: {
-    price: number
-    unit: string
-    currency: string
-  }
-  category: string
-  subcategory?: string
-  farmer: {
-    name: string
-    rating: number
-    reviews: number
-  }
-  images: string[]
-  availability: {
-    status: "In Stock" | "Limited" | "Out of Stock" | "Seasonal"
-    quantity: number
-  }
-  location: {
-    governorate: string
-    city: string
-    coordinates: {
-      latitude: number
-      longitude: number
-    }
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-}
+import { type Product } from "@/hooks/use-products"
 
 interface Resource {
   _id: string
@@ -118,12 +85,15 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, MapPin, Star, MessageCircle, Phone, Sprout, Package, Users, Heart, Plus } from "lucide-react"
+import { Search, MapPin, Star, MessageCircle, Phone, Sprout, Package, Users, Heart, Plus, Edit, Trash2 } from "lucide-react"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { ChatbotWidget } from "@/components/chatbot-widget"
 import { useProducts } from "@/hooks/use-products"
 import { useResources } from "@/hooks/use-resources"
 import { AddProductForm } from "@/components/add-product-form"
+import { AddResourceForm } from "@/components/add-resource-form"
+import { useUserRole } from "@/hooks/use-user-role"
+import { EditProductForm } from "@/components/edit-product-form"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function MarketplacePage() {
@@ -132,6 +102,47 @@ export default function MarketplacePage() {
 	const [selectedCategory, setSelectedCategory] = useState("all")
 	const [selectedRegion, setSelectedRegion] = useState("all")
 	const [activeTab, setActiveTab] = useState("products")
+	const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
+	// Function to extract name from email
+	const getFarmerDisplayName = (farmer: any) => {
+		if (farmer?.profile?.firstName && farmer?.profile?.lastName) {
+			return `${farmer.profile.firstName} ${farmer.profile.lastName}`
+		}
+		if (farmer?.name) {
+			return farmer.name
+		}
+		if (farmer?.email) {
+			// Extract name from email (part before @)
+			const emailPart = farmer.email.split('@')[0]
+			// Replace dots, underscores, dashes with spaces and capitalize
+			return emailPart
+				.replace(/[._-]/g, ' ')
+				.split(' ')
+				.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+				.join(' ')
+		}
+		return 'Unknown Farmer'
+	}
+
+	// Function to get current user display name
+	const getCurrentUserDisplayName = (user: any) => {
+		if (user?.profile?.firstName && user?.profile?.lastName) {
+			return `${user.profile.firstName} ${user.profile.lastName}`
+		}
+		if (user?.email) {
+			// Extract name from email (part before @)
+			const emailPart = user.email.split('@')[0]
+			// Replace dots, underscores, dashes with spaces and capitalize
+			return emailPart
+				.replace(/[._-]/g, ' ')
+				.split(' ')
+				.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+				.join(' ')
+		}
+		return 'User'
+	}
 
 
 
@@ -147,8 +158,30 @@ export default function MarketplacePage() {
 		activeTab === "resources" ? selectedRegion : "all"
 	)
 	
+	const { isSupplier } = useUserRole()
+	
 	const loading = productsLoading || resourcesLoading
 	const error = productsError || resourcesError
+
+	const handleEditProduct = (product: Product) => {
+		setEditingProduct(product)
+		setIsEditDialogOpen(true)
+	}
+
+	const handleCloseEdit = () => {
+		setIsEditDialogOpen(false)
+		setEditingProduct(null)
+	}
+
+	const handleProductUpdated = () => {
+		// Refresh the products list
+		window.location.reload()
+	}
+
+	const handleProductDeleted = () => {
+		// Refresh the products list
+		window.location.reload()
+	}
 
 	const productCategories = [
 		"all",
@@ -174,7 +207,7 @@ export default function MarketplacePage() {
 	const filteredProducts = products.filter((product: Product) => {
 		if (!searchQuery) return true
 		return product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			   product.farmer.name.toLowerCase().includes(searchQuery.toLowerCase())
+			   getFarmerDisplayName(product.farmer).toLowerCase().includes(searchQuery.toLowerCase())
 	})
 
 	// Filter resources by search query
@@ -229,16 +262,19 @@ export default function MarketplacePage() {
 							Discover fresh products from local farmers and connect with agricultural resources
 						</p>
 					</div>
-					<div>
+					<div className="flex gap-3">
 						{user?.role === 'farmer' && activeTab === 'products' && (
 							<AddProductForm
-								farmerName={`${user?.profile?.firstName || ''} ${user?.profile?.lastName || ''}`}
+								farmerName={getCurrentUserDisplayName(user)}
 								location={{
 									governorate: selectedRegion !== 'all' ? selectedRegion : user?.profile?.location?.governorate || '',
 									city: user?.profile?.location?.city || ''
 								}}
 								onProductAdded={() => window.location.reload()}
 							/>
+						)}
+						{isSupplier && activeTab === 'resources' && (
+							<AddResourceForm />
 						)}
 					</div>
 				</div>
@@ -351,7 +387,9 @@ export default function MarketplacePage() {
 
 												<div className="flex items-center gap-2 text-sm text-muted-foreground">
 													<Sprout className="h-4 w-4" />
-													<span>{product.farmer?.name || 'Unknown Farmer'}</span>
+													<span title={product.farmer?.email ? `Email: ${product.farmer.email}` : undefined}>
+														{getFarmerDisplayName(product.farmer)}
+													</span>
 													<span>•</span>
 													<MapPin className="h-4 w-4" />
 													<span>{product.location?.governorate || 'Unknown Location'}</span>
@@ -378,13 +416,30 @@ export default function MarketplacePage() {
 														{product.pricing?.price || 0} {product.pricing?.currency || 'TND'}/{product.pricing?.unit || 'kg'}
 													</span>
 													<div className="flex gap-2">
-														<Button size="sm" variant="outline">
-															<MessageCircle className="h-4 w-4" />
-														</Button>
-														<Button size="sm" variant="outline">
-															<Phone className="h-4 w-4" />
-														</Button>
-														<Button size="sm">Contact</Button>
+														{/* Show edit/delete buttons for farmer's own products */}
+														{user?.role === 'farmer' && product.farmer?._id === user._id ? (
+															<>
+																<Button 
+																	size="sm" 
+																	variant="outline"
+																	onClick={() => handleEditProduct(product)}
+																	className="flex items-center gap-1"
+																>
+																	<Edit className="h-3 w-3" />
+																	Edit
+																</Button>
+															</>
+														) : (
+															<>
+																<Button size="sm" variant="outline">
+																	<MessageCircle className="h-4 w-4" />
+																</Button>
+																<Button size="sm" variant="outline">
+																	<Phone className="h-4 w-4" />
+																</Button>
+																<Button size="sm">Contact</Button>
+															</>
+														)}
 													</div>
 												</div>
 											</div>
@@ -499,6 +554,17 @@ export default function MarketplacePage() {
 			</div>
 
 			<ChatbotWidget />
+
+			{/* Edit Product Dialog */}
+			{editingProduct && (
+				<EditProductForm
+					product={editingProduct}
+					isOpen={isEditDialogOpen}
+					onClose={handleCloseEdit}
+					onProductUpdated={handleProductUpdated}
+					onProductDeleted={handleProductDeleted}
+				/>
+			)}
 		</div>
 	)
 }

@@ -4,7 +4,7 @@ export interface User {
   _id?: ObjectId
   email: string
   password: string
-  role: "farmer" | "buyer" | "admin" | "partner" | "ngo"
+  role: "farmer" | "buyer" | "supplier" | "admin" | "partner" | "ngo"
   profile: {
     firstName: string
     lastName: string
@@ -13,6 +13,7 @@ export interface User {
     location: {
       governorate: string
       city: string
+      address?: string
       coordinates: {
         lat: number
         lng: number
@@ -48,6 +49,15 @@ export interface User {
     taxId: string
     preferredProducts: string[]
     averageOrderValue: number
+  }
+  supplierProfile?: {
+    companyName: string
+    businessType: string
+    taxId: string
+    suppliedProducts: string[]
+    serviceArea: string[]
+    certifications: string[]
+    establishedYear: number
   }
   preferences: {
     notifications: {

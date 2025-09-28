@@ -14,10 +14,17 @@ export interface Product {
   category: string
   subcategory?: string
   farmer: {
+    _id: string
     name: string
+    email: string
     rating: number
     reviews: number
+    profile?: {
+      firstName: string
+      lastName: string
+    }
   }
+  farmerId?: string
   images: string[]
   availability: {
     status: "In Stock" | "Limited" | "Out of Stock" | "Seasonal"

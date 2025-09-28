@@ -26,19 +26,8 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      })
-
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
-
-      // Store auth token and user data
-      localStorage.setItem('auth_token', data.token)
-      localStorage.setItem('user_profile', JSON.stringify(data.user))
-
+      await login(email, password)
+      
       toast({
         title: "Success",
         description: "Successfully signed in"

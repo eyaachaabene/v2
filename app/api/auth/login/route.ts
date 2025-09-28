@@ -27,13 +27,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    // Update last login
+    // Update last login and set active status
     await usersCollection.updateOne(
       { _id: user._id },
       {
         $set: {
           lastLogin: new Date(),
           updatedAt: new Date(),
+          isActive: true,
         },
       },
     )
@@ -48,11 +49,22 @@ export async function POST(request: NextRequest) {
     // Remove password from response
     const { password: _, ...userResponse } = user
 
-    return NextResponse.json({
+    // Create response with token cookie
+    const response = NextResponse.json({
       message: "Login successful",
       user: userResponse,
       token,
     })
+
+    // Set cookie for authentication
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    })
+
+    return response
   } catch (error) {
     console.error("[v0] Login error:", error)
     return NextResponse.json({ error: "Login failed" }, { status: 500 })

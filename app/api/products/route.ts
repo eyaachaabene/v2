@@ -131,3 +131,105 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create product" }, { status: 500 })
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const token = await verifyToken(request)
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const productId = searchParams.get("id")
+
+    if (!productId) {
+      return NextResponse.json({ error: "Product ID is required" }, { status: 400 })
+    }
+
+    const productData = await request.json()
+    const db = await getDatabase()
+    const productsCollection = db.collection<Product>("products")
+
+    // Check if product exists and belongs to the user
+    const existingProduct = await productsCollection.findOne({
+      _id: new ObjectId(productId),
+      farmerId: new ObjectId(token.userId)
+    })
+
+    if (!existingProduct) {
+      return NextResponse.json({ error: "Product not found or unauthorized" }, { status: 404 })
+    }
+
+    // Update product
+    const updatedProduct = {
+      ...productData,
+      farmerId: new ObjectId(token.userId),
+      updatedAt: new Date(),
+    }
+
+    const result = await productsCollection.updateOne(
+      { _id: new ObjectId(productId) },
+      { $set: updatedProduct }
+    )
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      message: "Product updated successfully",
+      product: { ...updatedProduct, _id: productId }
+    })
+
+  } catch (error) {
+    console.error("[v0] Update product error:", error)
+    return NextResponse.json({ error: "Failed to update product" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = await verifyToken(request)
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const productId = searchParams.get("id")
+
+    if (!productId) {
+      return NextResponse.json({ error: "Product ID is required" }, { status: 400 })
+    }
+
+    const db = await getDatabase()
+    const productsCollection = db.collection<Product>("products")
+
+    // Check if product exists and belongs to the user
+    const existingProduct = await productsCollection.findOne({
+      _id: new ObjectId(productId),
+      farmerId: new ObjectId(token.userId)
+    })
+
+    if (!existingProduct) {
+      return NextResponse.json({ error: "Product not found or unauthorized" }, { status: 404 })
+    }
+
+    // Delete product
+    const result = await productsCollection.deleteOne({
+      _id: new ObjectId(productId),
+      farmerId: new ObjectId(token.userId)
+    })
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      message: "Product deleted successfully"
+    })
+
+  } catch (error) {
+    console.error("[v0] Delete product error:", error)
+    return NextResponse.json({ error: "Failed to delete product" }, { status: 500 })
+  }
+}

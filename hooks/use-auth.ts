@@ -10,7 +10,12 @@ interface AuthState {
   token: string | null
 }
 
-export const useAuth = () => {
+interface AuthReturn extends AuthState {
+  login: (email: string, password: string) => Promise<void>
+  logout: () => void
+}
+
+export const useAuth = (): AuthReturn => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     profile: null,
