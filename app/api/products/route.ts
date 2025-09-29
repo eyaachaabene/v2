@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     // Get and validate parameters
     const category = searchParams.get("category") || null
     const governorate = searchParams.get("governorate") || null
+    const userId = searchParams.get("userId") || null
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = Number.parseInt(searchParams.get("limit") || "12")
     const search = searchParams.get("search") || null
@@ -34,6 +35,13 @@ export async function GET(request: NextRequest) {
     if (governorate && governorate !== "null" && governorate !== "undefined") {
       query["location.governorate"] = governorate
       console.log("Added governorate to query:", governorate);
+    }
+
+    if (userId && userId !== "null" && userId !== "undefined") {
+      if (ObjectId.isValid(userId)) {
+        query.farmerId = new ObjectId(userId)
+        console.log("Added farmerId to query:", userId);
+      }
     }
 
     if (search) {

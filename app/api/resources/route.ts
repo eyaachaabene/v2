@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 import type { Resource } from "@/lib/models/Resource"
-import { verifyToken } from "@/lib/auth-middleware"
+import jwt from "jsonwebtoken"
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,15 +11,39 @@ export async function GET(request: NextRequest) {
     // Get and validate parameters
     const category = searchParams.get("category") || null
     const governorate = searchParams.get("governorate") || null
+    const supplierId = searchParams.get("supplierId") || null
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = Number.parseInt(searchParams.get("limit") || "12")
     const search = searchParams.get("search") || null
+    const userOnly = searchParams.get("userOnly") === "true"
 
     const db = await getDatabase()
     const resourcesCollection = db.collection<Resource>("resources")
 
     // Build query
     const query: any = {}
+
+    // If userOnly is true, get user ID from token
+    if (userOnly) {
+      const authHeader = request.headers.get("authorization")
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return NextResponse.json(
+          { error: "Authorization token required" },
+          { status: 401 }
+        )
+      }
+
+      const token = authHeader.split(" ")[1]
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
+        query.supplierId = decoded.userId
+      } catch (error) {
+        return NextResponse.json(
+          { error: "Invalid token" },
+          { status: 401 }
+        )
+      }
+    }
 
     console.log("Received governorate:", governorate)
     console.log("Received category:", category)
@@ -34,6 +58,13 @@ export async function GET(request: NextRequest) {
     if (governorate && governorate !== "null" && governorate !== "undefined") {
       query["location.governorate"] = governorate
       console.log("Added governorate to query:", governorate)
+    }
+
+    if (supplierId && supplierId !== "null" && supplierId !== "undefined") {
+      if (ObjectId.isValid(supplierId)) {
+        query.supplierId = new ObjectId(supplierId)
+        console.log("Added supplierId to query:", supplierId)
+      }
     }
 
     if (search) {
@@ -73,6 +104,7 @@ export async function GET(request: NextRequest) {
             "supplier.role": 1,
             ratings: 1,
             tags: 1,
+            supplierId: 1,
             createdAt: 1,
             updatedAt: 1
           }
@@ -106,19 +138,49 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = await verifyToken(request)
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    console.log("POST /api/resources - Start")
+    
+    const authHeader = request.headers.get("authorization")
+    console.log("Auth header:", authHeader)
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("No auth header or wrong format")
+      return NextResponse.json(
+        { error: "Authorization token required" },
+        { status: 401 }
+      )
+    }
+
+    const tokenString = authHeader.split(" ")[1]
+    console.log("Token string length:", tokenString.length)
+    
+    let token
+    try {
+      token = jwt.verify(tokenString, process.env.JWT_SECRET || "fallback-secret") as any
+      console.log("Token decoded successfully:", { userId: token.userId, role: token.role })
+    } catch (error) {
+      console.log("Token verification failed:", error)
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
 
     // Vérifier que l'utilisateur est un supplier
     const db = await getDatabase()
     const usersCollection = db.collection("users")
     const user = await usersCollection.findOne({ _id: new ObjectId(token.userId) })
+    
+    console.log("User found:", user ? { id: user._id, role: user.role } : "null")
 
-    if (!user || (user.role !== "supplier" && user.role !== "admin")) {
+    if (!user) {
+      console.log("User not found in database")
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    if (user.role !== "Supplier" && user.role !== "supplier" && user.role !== "admin") {
+      console.log("User role not authorized:", user.role)
       return NextResponse.json({ error: "Only suppliers can add resources" }, { status: 403 })
     }
+
+    console.log("User authorized, proceeding with resource creation")
 
     const resourceData = await request.json()
 
