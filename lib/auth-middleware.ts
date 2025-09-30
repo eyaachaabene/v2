@@ -25,3 +25,19 @@ export async function verifyToken(request: NextRequest): Promise<TokenPayload | 
     return null
   }
 }
+
+// Auth middleware for API routes
+export async function authMiddleware(request: NextRequest): Promise<{ success: boolean; userId?: string; error?: string }> {
+  try {
+    const tokenPayload = await verifyToken(request)
+    
+    if (!tokenPayload) {
+      return { success: false, error: 'Authentication required' }
+    }
+
+    return { success: true, userId: tokenPayload.userId }
+  } catch (error) {
+    console.error('Auth middleware error:', error)
+    return { success: false, error: 'Authentication failed' }
+  }
+}

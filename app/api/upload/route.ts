@@ -38,7 +38,14 @@ export async function POST(request: NextRequest) {
 
     // Determine upload type based on form data
     const isResource = formData.get("image") !== null
-    const uploadType = isResource ? "resources" : "products"
+    const isCommunity = formData.get("type") === "community"
+    let uploadType = "products" // default
+    
+    if (isResource) {
+      uploadType = "resources"
+    } else if (isCommunity) {
+      uploadType = "community"
+    }
     
     // Create uploads directory if it doesn't exist
     const uploadsDir = join(process.cwd(), "public", "uploads", uploadType)
