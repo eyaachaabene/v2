@@ -15,6 +15,19 @@ export interface CommunityPost {
   images?: string[]
   category: string
   createdAt: string
+  userLiked?: boolean
+  postComments?: Comment[]
+}
+
+export interface Comment {
+  id: string
+  user: {
+    id: string
+    name: string
+    avatar?: string
+  }
+  content: string
+  createdAt: string
 }
 
 export interface CreatePostData {
@@ -31,6 +44,9 @@ interface UseCommunityReturn {
   error: string | null
   createPost: (postData: CreatePostData) => Promise<boolean>
   likePost: (postId: string) => Promise<void>
+  addComment: (postId: string, content: string) => Promise<boolean>
+  fetchComments: (postId: string) => Promise<boolean>
+  sharePost: (postId: string, platform?: string) => Promise<void>
   refreshPosts: () => Promise<void>
   hasMore: boolean
   loadMore: () => Promise<void>
@@ -132,7 +148,7 @@ export function useCommunity(): UseCommunityReturn {
       setPosts(prev => 
         prev.map(post => 
           post.id === postId 
-            ? { ...post, likes: data.likeCount }
+            ? { ...post, likes: data.likeCount, userLiked: data.userLiked }
             : post
         )
       )
@@ -140,6 +156,123 @@ export function useCommunity(): UseCommunityReturn {
       const errorMessage = err instanceof Error ? err.message : 'Failed to like post'
       setError(errorMessage)
       console.error('Error liking post:', err)
+    }
+  }
+
+  const addComment = async (postId: string, content: string): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        throw new Error('Please login to comment on posts')
+      }
+
+      const response = await fetch(`/api/community/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ content })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add comment')
+      }
+
+      // Update the post in the local state
+      setPosts(prev => 
+        prev.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                comments: data.commentCount,
+                postComments: [...(post.postComments || []), {
+                  id: data.comment.id,
+                  user: data.comment.user,
+                  content: data.comment.content,
+                  createdAt: data.comment.createdAt
+                }]
+              }
+            : post
+        )
+      )
+      return true
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add comment'
+      setError(errorMessage)
+      console.error('Error adding comment:', err)
+      return false
+    }
+  }
+
+  const fetchComments = async (postId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/community/${postId}/comments`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch comments')
+      }
+
+      // Update the post with all comments
+      setPosts(prev => 
+        prev.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                postComments: data.comments,
+                comments: data.commentCount
+              }
+            : post
+        )
+      )
+      return true
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch comments'
+      setError(errorMessage)
+      console.error('Error fetching comments:', err)
+      return false
+    }
+  }
+
+  const sharePost = async (postId: string, platform?: string) => {
+    try {
+      const post = posts.find(p => p.id === postId)
+      if (!post) return
+
+      const shareUrl = `${window.location.origin}/community/post/${postId}`
+      const shareText = `Check out this post: ${post.content.substring(0, 100)}...`
+
+      if (platform === 'copy') {
+        await navigator.clipboard.writeText(shareUrl)
+        // You might want to show a toast notification here
+        console.log('Link copied to clipboard!')
+      } else if (platform === 'twitter') {
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`
+        window.open(twitterUrl, '_blank')
+      } else if (platform === 'facebook') {
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
+        window.open(facebookUrl, '_blank')
+      } else {
+        // Web Share API for native sharing
+        if (navigator.share) {
+          await navigator.share({
+            title: 'Community Post',
+            text: shareText,
+            url: shareUrl
+          })
+        } else {
+          // Fallback: copy to clipboard
+          await navigator.clipboard.writeText(shareUrl)
+          console.log('Link copied to clipboard!')
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to share post'
+      setError(errorMessage)
+      console.error('Error sharing post:', err)
     }
   }
 
@@ -163,6 +296,9 @@ export function useCommunity(): UseCommunityReturn {
     error,
     createPost,
     likePost,
+    addComment,
+    fetchComments,
+    sharePost,
     refreshPosts,
     hasMore,
     loadMore

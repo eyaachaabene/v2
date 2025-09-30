@@ -31,20 +31,59 @@ export async function GET(request: NextRequest) {
       .skip((page - 1) * limit)
       .toArray()
 
-    // Transform posts to match frontend format
-    const transformedPosts = posts.map((post: any) => ({
-      id: post._id.toString(),
-      author: "Test User", // Mock data for now
-      location: "Tunisia", // Mock data for now
-      avatar: "/farmer-avatar-1.jpg", // Mock data for now
-      time: getTimeAgo(post.createdAt),
-      content: post.content,
-      tags: post.tags || [],
-      likes: post.likes?.length || 0,
-      comments: post.comments?.length || 0,
-      images: post.images || [],
-      category: post.category,
-      createdAt: post.createdAt
+    // For each post, fetch user details for comments
+    const transformedPosts = await Promise.all(posts.map(async (post: any) => {
+      // Get recent comments (limit to 3 for initial load)
+      const recentComments = post.comments ? post.comments.slice(-3) : []
+      
+      // Fetch user details for comments
+      const commentsWithUsers = await Promise.all(recentComments.map(async (comment: any) => {
+        try {
+          const user = await db.collection('users').findOne(
+            { _id: comment.user },
+            { projection: { 'profile.firstName': 1, 'profile.lastName': 1, 'profile.avatar': 1 } }
+          )
+          
+          return {
+            id: comment._id?.toString() || Date.now().toString(),
+            user: {
+              id: comment.user.toString(),
+              name: user ? `${user.profile.firstName} ${user.profile.lastName}` : 'Anonymous',
+              avatar: user?.profile.avatar || '/placeholder-user.jpg'
+            },
+            content: comment.content,
+            createdAt: comment.createdAt
+          }
+        } catch (err) {
+          console.error('Error fetching user for comment:', err)
+          return {
+            id: comment._id?.toString() || Date.now().toString(),
+            user: {
+              id: comment.user.toString(),
+              name: 'Anonymous',
+              avatar: '/placeholder-user.jpg'
+            },
+            content: comment.content,
+            createdAt: comment.createdAt
+          }
+        }
+      }))
+
+      return {
+        id: post._id.toString(),
+        author: "Test User", // Mock data for now
+        location: "Tunisia", // Mock data for now
+        avatar: "/farmer-avatar-1.jpg", // Mock data for now
+        time: getTimeAgo(post.createdAt),
+        content: post.content,
+        tags: post.tags || [],
+        likes: post.likes?.length || 0,
+        comments: post.comments?.length || 0,
+        images: post.images || [],
+        category: post.category,
+        createdAt: post.createdAt,
+        postComments: commentsWithUsers
+      }
     }))
 
     // Get total count for pagination

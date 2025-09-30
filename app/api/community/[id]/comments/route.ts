@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectMongoDB } from '@/lib/mongodb'
 import Post from '@/lib/models/Post'
+import User from '@/lib/models/UserModel'
 import { authMiddleware } from '@/lib/auth-middleware'
 
 // POST - Add a comment to a post
@@ -54,12 +55,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     post.comments.push(newComment)
     await post.save()
 
-    // Populate the new comment for response
-    await post.populate({
-      path: 'comments.user',
-      select: 'profile.firstName profile.lastName profile.avatar'
-    })
-
+    // Get user data manually to avoid populate issues
+    const user = await User.findById(userId).select('profile.firstName profile.lastName profile.avatar')
+    
     const addedComment = post.comments[post.comments.length - 1]
 
     return NextResponse.json({
@@ -67,9 +65,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       comment: {
         id: addedComment._id,
         user: {
-          id: addedComment.user._id,
-          name: `${addedComment.user.profile.firstName} ${addedComment.user.profile.lastName}`,
-          avatar: addedComment.user.profile.avatar
+          id: userId,
+          name: user ? `${user.profile.firstName} ${user.profile.lastName}` : 'Unknown User',
+          avatar: user?.profile.avatar
         },
         content: addedComment.content,
         createdAt: addedComment.createdAt
@@ -92,12 +90,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     await connectMongoDB()
     
     const postId = params.id
-    const post = await Post.findById(postId)
-      .populate({
-        path: 'comments.user',
-        select: 'profile.firstName profile.lastName profile.avatar'
-      })
-      .select('comments')
+    const post = await Post.findById(postId).select('comments')
     
     if (!post) {
       return NextResponse.json(
@@ -106,16 +99,32 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    const comments = post.comments.map((comment: any) => ({
-      id: comment._id,
-      user: {
-        id: comment.user._id,
-        name: `${comment.user.profile.firstName} ${comment.user.profile.lastName}`,
-        avatar: comment.user.profile.avatar
-      },
-      content: comment.content,
-      createdAt: comment.createdAt
-    }))
+    // Get all unique user IDs from comments
+    const userIds = [...new Set(post.comments.map((comment: any) => comment.user.toString()))]
+    
+    // Fetch all users at once
+    const users = await User.find({ _id: { $in: userIds } })
+      .select('profile.firstName profile.lastName profile.avatar')
+    
+    // Create a map for quick user lookup
+    const userMap = users.reduce((map: any, user: any) => {
+      map[user._id.toString()] = user
+      return map
+    }, {})
+
+    const comments = post.comments.map((comment: any) => {
+      const user = userMap[comment.user.toString()]
+      return {
+        id: comment._id,
+        user: {
+          id: comment.user,
+          name: user ? `${user.profile.firstName} ${user.profile.lastName}` : 'Unknown User',
+          avatar: user?.profile.avatar
+        },
+        content: comment.content,
+        createdAt: comment.createdAt
+      }
+    })
 
     return NextResponse.json({
       success: true,

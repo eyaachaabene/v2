@@ -136,7 +136,6 @@ const UserSchema = new mongoose.Schema({
 })
 
 // Indexes for better performance
-UserSchema.index({ email: 1 })
 UserSchema.index({ role: 1 })
 UserSchema.index({ 'profile.location.governorate': 1 })
 UserSchema.index({ 'farmerProfile.specializations': 1 })

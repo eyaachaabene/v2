@@ -51,7 +51,7 @@ export async function connectMongoDB() {
     }
 
     await mongoose.connect(uri, {
-      bufferCommands: false,
+      bufferCommands: true, // Allow buffering to prevent connection timing issues
     })
   } catch (error) {
     console.error('MongoDB connection error:', error)

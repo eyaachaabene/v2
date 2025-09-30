@@ -1,5 +1,8 @@
 import mongoose from 'mongoose'
 
+// Import User model to ensure it's registered
+import './UserModel'
+
 const PostSchema = new mongoose.Schema({
   author: {
     type: mongoose.Schema.Types.ObjectId,

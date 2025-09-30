@@ -4,9 +4,11 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Heart, MessageCircle, Share2, Plus, MapPin, Clock, Users, BookOpen, TrendingUp, Loader2, X, Upload } from "lucide-react"
+import { Heart, MessageCircle, Share2, Plus, MapPin, Clock, Users, BookOpen, TrendingUp, Loader2, X, Upload, Send, MoreHorizontal } from "lucide-react"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { useCommunity } from "@/hooks/use-community"
 import { useToast } from "@/hooks/use-toast"
@@ -136,8 +138,12 @@ export default function CommunityPage() {
   const [isCreatingPost, setIsCreatingPost] = useState(false)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
+  const [newComments, setNewComments] = useState<Record<string, string>>({})
+  const [allCommentsLoaded, setAllCommentsLoaded] = useState<Set<string>>(new Set())
+  const [loadingComments, setLoadingComments] = useState<Set<string>>(new Set())
   
-  const { posts, loading, error, createPost, likePost } = useCommunity()
+  const { posts, loading, error, createPost, likePost, addComment, fetchComments, sharePost } = useCommunity()
   const { toast } = useToast()
   const { token } = useAuth()
 
@@ -207,6 +213,93 @@ export default function CommunityPage() {
       return
     }
     await likePost(postId)
+  }
+
+  const handleAddComment = async (postId: string) => {
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to comment on posts.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const content = newComments[postId]?.trim()
+    if (!content) {
+      toast({
+        title: "Error",
+        description: "Please write a comment before submitting.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const success = await addComment(postId, content)
+    if (success) {
+      setNewComments(prev => ({ ...prev, [postId]: "" }))
+      toast({
+        title: "Success",
+        description: "Comment added successfully!",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: error || "Failed to add comment. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSharePost = async (postId: string, platform?: string) => {
+    await sharePost(postId, platform)
+    if (platform === 'copy' || !platform) {
+      toast({
+        title: "Success",
+        description: "Post link copied to clipboard!",
+      })
+    }
+  }
+
+  const toggleComments = (postId: string) => {
+    setExpandedComments(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(postId)) {
+        newSet.delete(postId)
+      } else {
+        newSet.add(postId)
+      }
+      return newSet
+    })
+  }
+
+  const handleLoadAllComments = async (postId: string) => {
+    if (allCommentsLoaded.has(postId) || loadingComments.has(postId)) {
+      return
+    }
+
+    setLoadingComments(prev => new Set(prev).add(postId))
+    
+    const success = await fetchComments(postId)
+    if (success) {
+      setAllCommentsLoaded(prev => new Set(prev).add(postId))
+      toast({
+        title: "Success",
+        description: "All comments loaded successfully!",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: error || "Failed to load comments. Please try again.",
+        variant: "destructive",
+      })
+    }
+    
+    setLoadingComments(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(postId)
+      return newSet
+    })
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -490,26 +583,145 @@ export default function CommunityPage() {
                       </div>
 
                       {/* Post Actions */}
-                      <div className="flex items-center justify-between pt-3 border-t">
-                        <div className="flex items-center gap-4">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="flex items-center gap-2"
-                            onClick={() => handleLikePost(post.id)}
-                          >
-                            <Heart className="h-4 w-4" />
-                            <span>{post.likes}</span>
-                          </Button>
-                          <Button variant="ghost" size="sm" className="flex items-center gap-2">
-                            <MessageCircle className="h-4 w-4" />
-                            <span>{post.comments}</span>
-                          </Button>
-                          <Button variant="ghost" size="sm" className="flex items-center gap-2">
-                            <Share2 className="h-4 w-4" />
-                            Share
-                          </Button>
+                      <div className="pt-3 border-t space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className={`flex items-center gap-2 ${post.userLiked ? 'text-red-500' : ''}`}
+                              onClick={() => handleLikePost(post.id)}
+                            >
+                              <Heart className={`h-4 w-4 ${post.userLiked ? 'fill-current' : ''}`} />
+                              <span>{post.likes}</span>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="flex items-center gap-2"
+                              onClick={() => toggleComments(post.id)}
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              <span>{post.comments}</span>
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                                  <Share2 className="h-4 w-4" />
+                                  Share
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => handleSharePost(post.id, 'copy')}>
+                                  Copy Link
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSharePost(post.id, 'twitter')}>
+                                  Share on Twitter
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSharePost(post.id, 'facebook')}>
+                                  Share on Facebook
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSharePost(post.id)}>
+                                  Native Share
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
+
+                        {/* Comments Section */}
+                        {expandedComments.has(post.id) && (
+                          <div className="space-y-3 pl-2 border-l-2 border-gray-200">
+                            {/* Existing Comments */}
+                            {post.postComments && post.postComments.length > 0 && (
+                              <div className="space-y-2">
+                                {/* Show limited comments initially (first 3) */}
+                                {(!allCommentsLoaded.has(post.id) ? post.postComments.slice(0, 3) : post.postComments).map((comment) => (
+                                  <div key={comment.id} className="flex gap-2 text-sm">
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarImage src={comment.user.avatar} />
+                                      <AvatarFallback>{comment.user.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                      <div className="bg-gray-100 rounded-lg px-3 py-2">
+                                        <div className="font-medium text-xs text-gray-600">{comment.user.name}</div>
+                                        <div>{comment.content}</div>
+                                      </div>
+                                      <div className="text-xs text-gray-500 mt-1">{new Date(comment.createdAt).toLocaleString()}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                                
+                                {/* Show More Comments Button */}
+                                {!allCommentsLoaded.has(post.id) && post.comments > 3 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-blue-600 hover:text-blue-800 p-0 h-auto font-normal"
+                                    onClick={() => handleLoadAllComments(post.id)}
+                                    disabled={loadingComments.has(post.id)}
+                                  >
+                                    {loadingComments.has(post.id) ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                        Loading comments...
+                                      </>
+                                    ) : (
+                                      `Show all ${post.comments} comments`
+                                    )}
+                                  </Button>
+                                )}
+                                
+                                {/* Show fewer comments option */}
+                                {allCommentsLoaded.has(post.id) && post.postComments && post.postComments.length > 3 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-600 hover:text-gray-800 p-0 h-auto font-normal"
+                                    onClick={() => setAllCommentsLoaded(prev => {
+                                      const newSet = new Set(prev)
+                                      newSet.delete(post.id)
+                                      return newSet
+                                    })}
+                                  >
+                                    Show fewer comments
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Show message when no comments yet */}
+                            {(!post.postComments || post.postComments.length === 0) && post.comments === 0 && (
+                              <div className="text-gray-500 text-sm text-center py-2">
+                                No comments yet. Be the first to comment!
+                              </div>
+                            )}
+
+                            {/* Add Comment */}
+                            <div className="flex gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src="/placeholder-user.jpg" />
+                                <AvatarFallback>You</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 flex gap-2">
+                                <Input
+                                  placeholder="Write a comment..."
+                                  value={newComments[post.id] || ""}
+                                  onChange={(e) => setNewComments(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                  onKeyPress={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+                                  className="flex-1"
+                                />
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleAddComment(post.id)}
+                                  disabled={!newComments[post.id]?.trim()}
+                                >
+                                  <Send className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
