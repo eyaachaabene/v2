@@ -24,6 +24,76 @@ export interface User {
     languages: string[]
     interests: string[]
   }
+  
+  // Enhanced Social Media Features
+  socialProfile: {
+    bio?: string
+    coverImage?: string
+    socialLinks: {
+      facebook?: string
+      twitter?: string
+      linkedin?: string
+      instagram?: string
+      website?: string
+    }
+    achievements: Array<{
+      title: string
+      description: string
+      icon: string
+      earnedAt: Date
+    }>
+    skills: string[]
+    experienceLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+    profileViews: number
+    helpfulAnswers: number
+  }
+  
+  // Friends System (Auto-accepted connections)
+  friends: Array<{
+    user: ObjectId
+    addedAt: Date
+    lastMessageAt?: Date
+    unreadMessages: number
+  }>
+  
+  // Connection System (for legacy support)
+  connections: Array<{
+    user: ObjectId
+    status: 'pending' | 'accepted' | 'blocked'
+    connectedAt: Date
+    requestedBy: ObjectId
+  }>
+  
+  // Following System (asymmetric)
+  following: Array<{
+    user: ObjectId
+    followedAt: Date
+  }>
+  
+  followers: Array<{
+    user: ObjectId
+    followedAt: Date
+  }>
+  
+  // Privacy Settings
+  privacySettings: {
+    profileVisibility: 'public' | 'connections' | 'private'
+    postVisibility: 'public' | 'connections' | 'followers' | 'private'
+    contactInfoVisibility: 'public' | 'connections' | 'private'
+    showConnectionsList: boolean
+    allowConnectionRequests: boolean
+    allowFollowers: boolean
+  }
+  
+  // Social Statistics
+  socialStats: {
+    postsCount: number
+    connectionsCount: number
+    friendsCount: number
+    followersCount: number
+    followingCount: number
+  }
+
   farmerProfile?: {
     farmName: string
     farmSize: number
@@ -64,6 +134,10 @@ export interface User {
       email: boolean
       sms: boolean
       push: boolean
+      connectionRequests: boolean
+      newFollowers: boolean
+      postLikes: boolean
+      postComments: boolean
     }
     language: string
     currency: string
@@ -78,6 +152,40 @@ export interface User {
   updatedAt: Date
   lastLogin?: Date
   isActive: boolean
+  
+  // Virtual fields
+  fullName?: string
+  connectionStatus?: 'none' | 'pending' | 'accepted' | 'blocked'
+  mutualConnections?: User[]
+}
+
+// Connection-related interfaces
+export interface ConnectionRequest {
+  _id?: ObjectId
+  from: ObjectId
+  to: ObjectId
+  status: 'pending' | 'accepted' | 'declined'
+  message?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface UserProfile {
+  _id: ObjectId
+  profile: User['profile']
+  socialProfile: User['socialProfile']
+  socialStats: User['socialStats']
+  role: User['role']
+  farmerProfile?: User['farmerProfile']
+  buyerProfile?: User['buyerProfile']
+  supplierProfile?: User['supplierProfile']
+  connectionStatus?: 'none' | 'pending' | 'accepted' | 'blocked'
+  isFollowing?: boolean
+  isFollowed?: boolean
+  mutualConnections?: number
+  canViewProfile: boolean
+  canViewPosts: boolean
+  canViewContactInfo: boolean
 }
 
 export interface Product {
