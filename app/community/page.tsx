@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,10 +13,12 @@ import { DashboardNav } from "@/components/dashboard-nav"
 import { useCommunity } from "@/hooks/use-community"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
+import { useFriends } from "@/hooks/use-friends"
 
 const posts = [
   {
     id: 1,
+    authorId: "64a7b8c9e4f2a1b5c8d9e0f4",
     author: "Fatma Ben Ali",
     location: "Sfax",
     avatar: "/farmer-avatar-1.jpg",
@@ -31,6 +33,7 @@ const posts = [
   },
   {
     id: 2,
+    authorId: "64a7b8c9e4f2a1b5c8d9e0f5",
     author: "Ahmed Mansouri",
     location: "Sousse",
     avatar: "/farmer-avatar-2.jpg",
@@ -44,6 +47,7 @@ const posts = [
   },
   {
     id: 3,
+    authorId: "64a7b8c9e4f2a1b5c8d9e0f6",
     author: "Leila Trabelsi",
     location: "Kairouan",
     avatar: "/farmer-avatar-3.jpg",
@@ -58,6 +62,7 @@ const posts = [
   },
   {
     id: 4,
+    authorId: "64a7b8c9e4f2a1b5c8d9e0f7",
     author: "Omar Khelifi",
     location: "Nabeul",
     avatar: "/farmer-avatar-4.jpg",
@@ -73,7 +78,7 @@ const posts = [
 
 const suggestedConnections = [
   {
-    id: 1,
+    id: "64a7b8c9e4f2a1b5c8d9e0f1",
     name: "Sonia Gharbi",
     location: "Bizerte",
     avatar: "/farmer-avatar-5.jpg",
@@ -82,7 +87,7 @@ const suggestedConnections = [
     description: "Specializes in aromatic herbs and organic farming techniques",
   },
   {
-    id: 2,
+    id: "64a7b8c9e4f2a1b5c8d9e0f2",
     name: "Karim Bouazizi",
     location: "Tozeur",
     avatar: "/farmer-avatar-6.jpg",
@@ -91,7 +96,7 @@ const suggestedConnections = [
     description: "Expert in date cultivation and desert agriculture",
   },
   {
-    id: 3,
+    id: "64a7b8c9e4f2a1b5c8d9e0f3",
     name: "Nadia Hamdi",
     location: "Sfax",
     avatar: "/farmer-avatar-7.jpg",
@@ -142,10 +147,29 @@ export default function CommunityPage() {
   const [newComments, setNewComments] = useState<Record<string, string>>({})
   const [allCommentsLoaded, setAllCommentsLoaded] = useState<Set<string>>(new Set())
   const [loadingComments, setLoadingComments] = useState<Set<string>>(new Set())
+  const [realUsers, setRealUsers] = useState<any[]>([])
   
   const { posts, loading, error, createPost, likePost, addComment, fetchComments, sharePost } = useCommunity()
   const { toast } = useToast()
   const { token } = useAuth()
+  const { connectWithUser, isFriend } = useFriends()
+
+  // Fetch real users for suggested connections
+  useEffect(() => {
+    const fetchRealUsers = async () => {
+      try {
+        const response = await fetch('/api/users/demo')
+        if (response.ok) {
+          const data = await response.json()
+          setRealUsers(data.users || [])
+        }
+      } catch (error) {
+        console.error('Error fetching real users:', error)
+      }
+    }
+
+    fetchRealUsers()
+  }, [])
 
   const availableTags = ["Olives", "Tomatoes", "Wheat", "Citrus", "Herbs", "Dates", "Organic", "IoT", "Weather"]
   const categories = ["General", "Question", "Success Story", "Knowledge Sharing", "Weather Alert"]
@@ -369,6 +393,23 @@ export default function CommunityPage() {
     setUploadedImages(prev => prev.filter(img => img !== imageUrl))
   }
 
+  const handleConnectUser = async (userId: string) => {
+    try {
+      await connectWithUser(userId)
+      toast({
+        title: "Success",
+        description: "You are now connected! You can now send messages to each other.",
+      })
+    } catch (error) {
+      console.error("Connect error:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to connect with user",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardNav />
@@ -556,7 +597,24 @@ export default function CommunityPage() {
                             </div>
                           </div>
                         </div>
-                        <Badge variant="outline">{post.category}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{post.category}</Badge>
+                          {post.authorId && !isFriend(post.authorId) && token && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleConnectUser(post.authorId)}
+                              className="text-xs"
+                            >
+                              Connect
+                            </Button>
+                          )}
+                          {post.authorId && isFriend(post.authorId) && (
+                            <Badge variant="secondary" className="text-xs">
+                              Connected
+                            </Badge>
+                          )}
+                        </div>
                       </div>
 
                       {/* Post Content */}
@@ -743,42 +801,48 @@ export default function CommunityPage() {
                 <CardDescription>Farmers you might want to connect with</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {suggestedConnections.map((connection) => (
-                  <div key={connection.id} className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={connection.avatar || "/placeholder.svg"} alt={connection.name} />
-                        <AvatarFallback>
-                          {connection.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm">{connection.name}</h4>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          <span>{connection.location}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">{connection.description}</p>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {connection.commonTags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {connection.mutualConnections} mutual connections
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" className="w-full">
-                      Connect
-                    </Button>
+                {realUsers.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-4">
+                    <p>Loading suggested connections...</p>
                   </div>
-                ))}
+                ) : (
+                  realUsers.slice(0, 3).map((user) => (
+                    <div key={user.id} className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                          <AvatarFallback>
+                            {user.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm">{user.name}</h4>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            <span>{user.location}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{user.bio}</p>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {user.role}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => handleConnectUser(user.id)}
+                        disabled={isFriend(user.id)}
+                      >
+                        {isFriend(user.id) ? "Connected" : "Connect"}
+                      </Button>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
 

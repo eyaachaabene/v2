@@ -5,8 +5,12 @@ import { useState, useEffect } from 'react'
 export interface CommunityPost {
   id: string
   author: string
+  authorId?: string
+  authorRole?: string
   location: string
   avatar?: string
+  isConnected?: boolean
+  isFollowing?: boolean
   time: string
   content: string
   tags: string[]

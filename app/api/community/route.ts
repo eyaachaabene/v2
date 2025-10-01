@@ -31,10 +31,70 @@ export async function GET(request: NextRequest) {
       .skip((page - 1) * limit)
       .toArray()
 
-    // For each post, fetch user details for comments
+    // For each post, fetch user details with enhanced profile information
     const transformedPosts = await Promise.all(posts.map(async (post: any) => {
       // Get recent comments (limit to 3 for initial load)
       const recentComments = post.comments ? post.comments.slice(-3) : []
+      
+      // Fetch user details for the post author
+      let authorInfo = {
+        id: post.authorId ? post.authorId.toString() : null,
+        name: "Anonymous",
+        avatar: "/placeholder-user.jpg",
+        role: "farmer",
+        location: "Unknown",
+        isConnected: false,
+        isFollowing: false
+      }
+
+      if (post.authorId) {
+        try {
+          const author = await db.collection('users').findOne(
+            { _id: post.authorId },
+            { 
+              projection: { 
+                'profile.firstName': 1, 
+                'profile.lastName': 1, 
+                'profile.avatar': 1,
+                'profile.location': 1,
+                'role': 1,
+                'connections': 1,
+                'followers': 1
+              } 
+            }
+          )
+          
+          if (author) {
+            authorInfo = {
+              id: author._id.toString(),
+              name: `${author.profile.firstName} ${author.profile.lastName}`,
+              avatar: author.profile.avatar || "/placeholder-user.jpg",
+              role: author.role || "farmer",
+              location: `${author.profile.location?.city || ''}, ${author.profile.location?.governorate || ''}`.replace(/^,\s*|,\s*$/g, '') || "Unknown",
+              isConnected: false,
+              isFollowing: false
+            }
+
+            // Check if requesting user is connected or following
+            const tokenPayload = await verifyToken(request)
+            if (tokenPayload?.userId && tokenPayload.userId !== author._id.toString()) {
+              // Check connection status
+              const connection = author.connections?.find((conn: any) => 
+                conn.user.toString() === tokenPayload.userId && conn.status === 'accepted'
+              )
+              authorInfo.isConnected = !!connection
+
+              // Check following status
+              const isFollowing = author.followers?.some((follower: any) => 
+                follower.user.toString() === tokenPayload.userId
+              )
+              authorInfo.isFollowing = !!isFollowing
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching author info:', err)
+        }
+      }
       
       // Fetch user details for comments
       const commentsWithUsers = await Promise.all(recentComments.map(async (comment: any) => {
@@ -71,9 +131,13 @@ export async function GET(request: NextRequest) {
 
       return {
         id: post._id.toString(),
-        author: "Test User", // Mock data for now
-        location: "Tunisia", // Mock data for now
-        avatar: "/farmer-avatar-1.jpg", // Mock data for now
+        author: authorInfo.name,
+        authorId: authorInfo.id,
+        authorRole: authorInfo.role,
+        location: authorInfo.location,
+        avatar: authorInfo.avatar,
+        isConnected: authorInfo.isConnected,
+        isFollowing: authorInfo.isFollowing,
         time: getTimeAgo(post.createdAt),
         content: post.content,
         tags: post.tags || [],
