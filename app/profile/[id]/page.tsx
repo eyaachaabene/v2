@@ -1,431 +1,355 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MessageCircle, Phone, MapPin, Star, Calendar, Package, Sprout, Users, Heart, Share2 } from "lucide-react"
-import { DashboardNav } from "@/components/dashboard-nav"
-import { EditProfileDialog } from "@/components/edit-profile-dialog"
-import { UserItemsGrid } from "@/components/user-items-grid"
-import { useAuth } from "@/hooks/use-auth"
-import { toast } from "sonner"
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
+import Image from 'next/image'
+import { 
+  MapPin, 
+  Users, 
+  Heart, 
+  MessageCircle, 
+  UserPlus, 
+  UserMinus, 
+  Link as LinkIcon,
+  Calendar,
+  Mail,
+  Phone,
+  Globe,
+  Award,
+  Briefcase,
+  Loader2,
+  MoreHorizontal,
+  Settings,
+  Share2
+} from 'lucide-react'
 
-interface UserProfile {
-  _id: string
-  email: string
-  role: 'farmer' | 'supplier'
-  profile: {
-    firstName?: string
-    lastName?: string
-    phone?: string
-    address?: string
-    bio?: string
-    avatar?: string
-  }
-  location?: {
-    governorate: string
-    city: string
-    coordinates: {
-      lat: number
-      lng: number
-    }
-  }
-  stats: {
-    totalProducts?: number
-    totalResources?: number
-    totalSales?: number
-    rating?: number
-    reviewCount?: number
-    yearsExperience?: number
-    joinedDate: string
-  }
-}
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useUserProfile } from '@/hooks/use-user-profile'
+import { useAuth } from '@/hooks/use-auth'
 
-interface Product {
-  _id: string
-  name: string
-  description: string
-  category: string
-  images: string[]
-  pricing: {
-    price: number
-    currency: string
-    unit: string
-  }
-  availability: {
-    status: string
-    quantity: number
-  }
-  tags: string[]
-  createdAt: string
-}
+interface ProfilePageProps {}
 
-interface Resource {
-  _id: string
-  name: string
-  description: string
-  category: string
-  type: string
-  images: string[]
-  pricing: {
-    price: number
-    currency: string
-    unit: string
-    minimumOrder: number
-  }
-  availability: {
-    status: string
-    quantity: number
-  }
-  tags: string[]
-  createdAt: string
-}
-
-export default function ProfilePage() {
+export default function ProfilePage({}: ProfilePageProps) {
   const params = useParams()
   const userId = params.id as string
-  const { user: currentUser, profile: currentUserProfile } = useAuth()
+  const { user: currentUser } = useAuth()
   
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
-  const [resources, setResources] = useState<Resource[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("overview")
+  const {
+    profile,
+    loading,
+    error,
+    connectionStatus,
+    isFollowing,
+    mutualConnections,
+    sendConnectionRequest,
+    acceptConnectionRequest,
+    removeConnection,
+    followUser,
+    unfollowUser,
+    canViewProfile,
+    canViewPosts,
+    canViewContactInfo
+  } = useUserProfile(userId)
 
-  // Check if the current user is viewing their own profile
-  const isCurrentUser = currentUserProfile?.uid === userId || currentUser?._id === userId || currentUser?.uid === userId
+  const [activeTab, setActiveTab] = useState('overview')
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (userId) {
-      fetchUserProfile()
-      fetchUserProducts()
-      fetchUserResources()
-    }
-  }, [userId])
+  const isOwnProfile = currentUser?.id === userId
 
-  const fetchUserProfile = async () => {
+  // Handle connection actions
+  const handleConnectionAction = async (action: string) => {
+    setActionLoading(action)
     try {
-      const response = await fetch(`/api/users/${userId}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch user profile')
+      switch (action) {
+        case 'connect':
+          await sendConnectionRequest()
+          break
+        case 'accept':
+          await acceptConnectionRequest()
+          break
+        case 'remove':
+          await removeConnection()
+          break
+        case 'follow':
+          await followUser()
+          break
+        case 'unfollow':
+          await unfollowUser()
+          break
       }
-      const data = await response.json()
-      setUserProfile(data.user)
-    } catch (error) {
-      console.error('Error fetching user profile:', error)
-      setError('Failed to load user profile')
-    }
-  }
-
-  const fetchUserProducts = async () => {
-    try {
-      const response = await fetch(`/api/products?userId=${userId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setProducts(data.products || [])
-      }
-    } catch (error) {
-      console.error('Error fetching user products:', error)
-    }
-  }
-
-  const fetchUserResources = async () => {
-    try {
-      const response = await fetch(`/api/resources?supplierId=${userId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setResources(data.resources || [])
-      }
-    } catch (error) {
-      console.error('Error fetching user resources:', error)
     } finally {
-      setLoading(false)
-    }
-  }
-
-  const getDisplayName = (profile: UserProfile) => {
-    if (profile.profile?.firstName && profile.profile?.lastName) {
-      return `${profile.profile.firstName} ${profile.profile.lastName}`
-    }
-    if (profile.email) {
-      const emailPart = profile.email.split('@')[0]
-      return emailPart
-        .replace(/[._-]/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ')
-    }
-    return 'User'
-  }
-
-  const getInitials = (profile: UserProfile) => {
-    const name = getDisplayName(profile)
-    return name.split(' ').map(n => n[0]).join('').toUpperCase()
-  }
-
-  const handleContact = () => {
-    if (userProfile?.profile?.phone) {
-      window.open(`tel:${userProfile.profile.phone}`)
-    } else {
-      toast.info("Contact information not available")
-    }
-  }
-
-  const handleMessage = () => {
-    toast.info("Messaging feature coming soon")
-  }
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: `${getDisplayName(userProfile!)} - Profile`,
-        text: `Check out ${getDisplayName(userProfile!)}'s profile`,
-        url: window.location.href
-      })
-    } else {
-      navigator.clipboard.writeText(window.location.href)
-      toast.success("Profile link copied to clipboard")
-    }
-  }
-
-  const handleProfileUpdate = (updatedProfile: UserProfile) => {
-    setUserProfile(updatedProfile)
-  }
-
-  const handleItemDelete = (itemId: string, itemType: 'products' | 'resources') => {
-    if (itemType === 'products') {
-      setProducts(prev => prev.filter(item => item._id !== itemId))
-    } else {
-      setResources(prev => prev.filter(item => item._id !== itemId))
+      setActionLoading(null)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNav />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-lg">Loading profile...</div>
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
-  if (error || !userProfile) {
+  if (error || !profile) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNav />
-        <div className="container mx-auto px-4 py-8">
-          <Card className="w-full max-w-md mx-auto">
-            <CardHeader>
-              <CardTitle>Profile Not Found</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>The user profile you're looking for doesn't exist or couldn't be loaded.</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNav />
-      
-      <div className="container mx-auto px-4 py-8">
-        {/* Profile Header */}
-        <Card className="mb-8">
-          <CardContent className="p-8">
-            <div className="flex flex-col md:flex-row gap-6">
-              {/* Avatar Section */}
-              <div className="flex flex-col items-center md:items-start">
-                <Avatar className="h-32 w-32 mb-4">
-                  <AvatarImage src={userProfile.profile?.avatar} alt={getDisplayName(userProfile)} />
-                  <AvatarFallback className="text-2xl">
-                    {getInitials(userProfile)}
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex gap-2">
-                  {isCurrentUser ? (
-                    <EditProfileDialog 
-                      userProfile={userProfile} 
-                      isCurrentUser={isCurrentUser}
-                      onProfileUpdate={handleProfileUpdate}
-                    />
-                  ) : (
-                    <>
-                      <Button onClick={handleMessage} className="flex items-center gap-2">
-                        <MessageCircle className="h-4 w-4" />
-                        Message
-                      </Button>
-                      <Button variant="outline" onClick={handleContact} className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        Contact
-                      </Button>
-                    </>
-                  )}
-                  <Button variant="ghost" size="sm" onClick={handleShare}>
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Profile Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <h1 className="text-3xl font-bold">{getDisplayName(userProfile)}</h1>
-                  <Badge variant={userProfile.role === 'farmer' ? 'default' : 'secondary'}>
-                    {userProfile.role === 'farmer' ? 'Farmer' : 'Supplier'}
-                  </Badge>
-                </div>
-
-                {userProfile.profile?.bio && (
-                  <p className="text-gray-600 mb-4 max-w-2xl">
-                    {userProfile.profile.bio}
-                  </p>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  {userProfile.location && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <MapPin className="h-4 w-4" />
-                      <span>{userProfile.location.city}, {userProfile.location.governorate}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Calendar className="h-4 w-4" />
-                    <span>Joined {new Date(userProfile.stats.joinedDate).toLocaleDateString()}</span>
-                  </div>
-
-                  {userProfile.stats.rating && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span>{userProfile.stats.rating.toFixed(1)} ({userProfile.stats.reviewCount} reviews)</span>
-                    </div>
-                  )}
-
-                  {userProfile.stats.yearsExperience && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Users className="h-4 w-4" />
-                      <span>{userProfile.stats.yearsExperience} years experience</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Stats Row */}
-                <div className="flex gap-6 text-center">
-                  {userProfile.role === 'farmer' && userProfile.stats.totalProducts !== undefined && (
-                    <div>
-                      <div className="text-2xl font-bold text-primary">{userProfile.stats.totalProducts}</div>
-                      <div className="text-sm text-gray-600">Products</div>
-                    </div>
-                  )}
-                  
-                  {userProfile.role === 'supplier' && userProfile.stats.totalResources !== undefined && (
-                    <div>
-                      <div className="text-2xl font-bold text-primary">{userProfile.stats.totalResources}</div>
-                      <div className="text-sm text-gray-600">Resources</div>
-                    </div>
-                  )}
-
-                  {userProfile.stats.totalSales !== undefined && (
-                    <div>
-                      <div className="text-2xl font-bold text-primary">{userProfile.stats.totalSales}</div>
-                      <div className="text-sm text-gray-600">Total Sales</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-lg font-semibold mb-2">Profile Not Found</h2>
+            <p className="text-muted-foreground">{error || 'This profile is not available.'}</p>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
 
-        {/* Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full ${userProfile.role === 'farmer' ? 'grid-cols-2' : userProfile.role === 'supplier' ? 'grid-cols-2' : 'grid-cols-3'}`}>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            {(userProfile.role === 'farmer' || products.length > 0) && (
-              <TabsTrigger value="products" className="flex items-center gap-2">
-                <Sprout className="h-4 w-4" />
-                Products ({products.length})
-              </TabsTrigger>
-            )}
-            {(userProfile.role === 'supplier' || resources.length > 0) && (
-              <TabsTrigger value="resources" className="flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Resources ({resources.length})
-              </TabsTrigger>
-            )}
-          </TabsList>
+  if (!canViewProfile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-lg font-semibold mb-2">Private Profile</h2>
+            <p className="text-muted-foreground">
+              This profile is private and you don't have permission to view it.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
-          <TabsContent value="overview" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Recent Products */}
-              {products.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Sprout className="h-5 w-5" />
-                      Recent Products
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {products.slice(0, 3).map((product) => (
-                        <div key={product._id} className="flex gap-3">
-                          <img
-                            src={product.images?.[0] || "/placeholder.svg"}
-                            alt={product.name}
-                            className="w-16 h-16 rounded object-cover"
-                          />
-                          <div className="flex-1">
-                            <h4 className="font-medium">{product.name}</h4>
-                            <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
-                            <p className="text-sm font-medium text-primary">
-                              {product.pricing.price} {product.pricing.currency}/{product.pricing.unit}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+  const fullName = `${profile.profile.firstName} ${profile.profile.lastName}`
+  const location = `${profile.profile.location?.city || ''}, ${profile.profile.location?.governorate || ''}`.replace(/^,\s*|,\s*$/g, '')
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      {/* Profile Header */}
+      <Card className="mb-6">
+        <div className="relative h-48 bg-gradient-to-r from-green-400 to-blue-500 rounded-t-lg">
+          {profile.socialProfile?.coverImage && (
+            <Image
+              src={profile.socialProfile.coverImage}
+              alt="Cover"
+              fill
+              className="object-cover rounded-t-lg"
+            />
+          )}
+          <div className="absolute inset-0 bg-black/20 rounded-t-lg" />
+        </div>
+        
+        <CardContent className="relative">
+          {/* Profile Picture */}
+          <div className="absolute -top-16 left-6">
+            <Avatar className="h-32 w-32 border-4 border-background">
+              <AvatarImage src={profile.profile.avatar} alt={fullName} />
+              <AvatarFallback className="text-2xl">
+                {profile.profile.firstName[0]}{profile.profile.lastName[0]}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+
+          <div className="pt-20 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              {/* Profile Info */}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h1 className="text-2xl font-bold">{fullName}</h1>
+                  <Badge variant="secondary">{profile.role}</Badge>
+                  {connectionStatus === 'accepted' && (
+                    <Badge variant="outline" className="text-green-600">
+                      <Users className="w-3 h-3 mr-1" />
+                      Connected
+                    </Badge>
+                  )}
+                </div>
+
+                {profile.socialProfile?.bio && (
+                  <p className="text-muted-foreground mb-3">{profile.socialProfile.bio}</p>
+                )}
+
+                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                  {location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {location}
                     </div>
-                  </CardContent>
-                </Card>
+                  )}
+                  
+                  {mutualConnections > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      {mutualConnections} mutual connections
+                    </div>
+                  )}
+
+                  {canViewContactInfo && profile.profile.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone className="w-4 h-4" />
+                      {profile.profile.phone}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              {!isOwnProfile && (
+                <div className="flex gap-2">
+                  {/* Connection Button */}
+                  {connectionStatus === 'none' && (
+                    <Button 
+                      onClick={() => handleConnectionAction('connect')}
+                      disabled={actionLoading === 'connect'}
+                    >
+                      {actionLoading === 'connect' ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <UserPlus className="w-4 h-4 mr-2" />
+                      )}
+                      Connect
+                    </Button>
+                  )}
+
+                  {connectionStatus === 'pending' && (
+                    <Button variant="outline" disabled>
+                      Request Sent
+                    </Button>
+                  )}
+
+                  {connectionStatus === 'accepted' && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => handleConnectionAction('remove')}
+                      disabled={actionLoading === 'remove'}
+                    >
+                      {actionLoading === 'remove' ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <UserMinus className="w-4 h-4 mr-2" />
+                      )}
+                      Connected
+                    </Button>
+                  )}
+
+                  {/* Follow Button */}
+                  <Button 
+                    variant={isFollowing ? "outline" : "default"}
+                    onClick={() => handleConnectionAction(isFollowing ? 'unfollow' : 'follow')}
+                    disabled={actionLoading === (isFollowing ? 'unfollow' : 'follow')}
+                  >
+                    {actionLoading === (isFollowing ? 'unfollow' : 'follow') ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Heart className={`w-4 h-4 mr-2 ${isFollowing ? 'fill-current' : ''}`} />
+                    )}
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </Button>
+
+                  {/* Message Button */}
+                  <Button variant="outline">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Message
+                  </Button>
+
+                  {/* More Actions */}
+                  <Button variant="outline" size="icon">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </div>
               )}
 
-              {/* Recent Resources */}
-              {resources.length > 0 && (
+              {isOwnProfile && (
+                <div className="flex gap-2">
+                  <Button variant="outline">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                  <Button variant="outline" size="icon">
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{profile.socialStats.postsCount}</div>
+            <div className="text-sm text-muted-foreground">Posts</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{profile.socialStats.connectionsCount}</div>
+            <div className="text-sm text-muted-foreground">Connections</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{profile.socialStats.followersCount}</div>
+            <div className="text-sm text-muted-foreground">Followers</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{profile.socialProfile?.helpfulAnswers || 0}</div>
+            <div className="text-sm text-muted-foreground">Helpful Answers</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="posts">Posts</TabsTrigger>
+          <TabsTrigger value="connections">Connections</TabsTrigger>
+          <TabsTrigger value="about">About</TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Recent Posts */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Posts</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {canViewPosts ? (
+                    <p className="text-muted-foreground">Posts will be displayed here...</p>
+                  ) : (
+                    <p className="text-muted-foreground">This user's posts are private.</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Achievements */}
+              {profile.socialProfile?.achievements && profile.socialProfile.achievements.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      Recent Resources
-                    </CardTitle>
+                    <CardTitle>Achievements</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {resources.slice(0, 3).map((resource) => (
-                        <div key={resource._id} className="flex gap-3">
-                          <img
-                            src={resource.images?.[0] || "/placeholder.svg"}
-                            alt={resource.name}
-                            className="w-16 h-16 rounded object-cover"
-                          />
-                          <div className="flex-1">
-                            <h4 className="font-medium">{resource.name}</h4>
-                            <p className="text-sm text-gray-600 line-clamp-2">{resource.description}</p>
-                            <p className="text-sm font-medium text-primary">
-                              {resource.pricing.price} {resource.pricing.currency}/{resource.pricing.unit}
-                            </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {profile.socialProfile.achievements.map((achievement, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                          <Award className="w-8 h-8 text-yellow-500" />
+                          <div>
+                            <h4 className="font-medium">{achievement.title}</h4>
+                            <p className="text-sm text-muted-foreground">{achievement.description}</p>
                           </div>
                         </div>
                       ))}
@@ -434,27 +358,210 @@ export default function ProfilePage() {
                 </Card>
               )}
             </div>
-          </TabsContent>
 
-          <TabsContent value="products" className="mt-6">
-            <UserItemsGrid
-              items={products}
-              itemType="products"
-              isCurrentUser={isCurrentUser}
-              onItemDelete={(itemId) => handleItemDelete(itemId, 'products')}
-            />
-          </TabsContent>
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Contact Info */}
+              {canViewContactInfo && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Contact Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {profile.profile.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span>{profile.profile.phone}</span>
+                      </div>
+                    )}
+                    
+                    {profile.socialProfile?.socialLinks?.website && (
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-muted-foreground" />
+                        <a 
+                          href={profile.socialProfile.socialLinks.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          Website
+                        </a>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
-          <TabsContent value="resources" className="mt-6">
-            <UserItemsGrid
-              items={resources}
-              itemType="resources"
-              isCurrentUser={isCurrentUser}
-              onItemDelete={(itemId) => handleItemDelete(itemId, 'resources')}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
+              {/* Skills */}
+              {profile.socialProfile?.skills && profile.socialProfile.skills.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Skills & Expertise</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.socialProfile.skills.map((skill, index) => (
+                        <Badge key={index} variant="secondary">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Role-specific Info */}
+              {profile.farmerProfile && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Farm Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <span className="font-medium">Farm Name:</span>
+                      <p>{profile.farmerProfile.farmName}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Farm Size:</span>
+                      <p>{profile.farmerProfile.farmSize} hectares</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Experience:</span>
+                      <p>{profile.farmerProfile.farmingExperience} years</p>
+                    </div>
+                    {profile.farmerProfile.specializations && profile.farmerProfile.specializations.length > 0 && (
+                      <div>
+                        <span className="font-medium">Specializations:</span>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {profile.farmerProfile.specializations.map((spec, index) => (
+                            <Badge key={index} variant="outline">
+                              {spec}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Posts Tab */}
+        <TabsContent value="posts">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Posts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {canViewPosts ? (
+                <p className="text-muted-foreground">Posts will be displayed here...</p>
+              ) : (
+                <p className="text-muted-foreground">This user's posts are private.</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Connections Tab */}
+        <TabsContent value="connections">
+          <Card>
+            <CardHeader>
+              <CardTitle>Connections</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Connections list will be displayed here...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* About Tab */}
+        <TabsContent value="about">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Personal Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <span className="font-medium">Full Name:</span>
+                  <p>{fullName}</p>
+                </div>
+                
+                <div>
+                  <span className="font-medium">Role:</span>
+                  <p className="capitalize">{profile.role}</p>
+                </div>
+                
+                <div>
+                  <span className="font-medium">Location:</span>
+                  <p>{location || 'Not specified'}</p>
+                </div>
+                
+                <div>
+                  <span className="font-medium">Experience Level:</span>
+                  <p className="capitalize">{profile.socialProfile?.experienceLevel || 'Beginner'}</p>
+                </div>
+
+                {profile.profile.languages && profile.profile.languages.length > 0 && (
+                  <div>
+                    <span className="font-medium">Languages:</span>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {profile.profile.languages.map((lang, index) => (
+                        <Badge key={index} variant="outline">
+                          {lang}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Professional Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {profile.role === 'farmer' && profile.farmerProfile ? (
+                  <div className="space-y-4">
+                    <div>
+                      <span className="font-medium">Farm Name:</span>
+                      <p>{profile.farmerProfile.farmName}</p>
+                    </div>
+                    
+                    <div>
+                      <span className="font-medium">Farm Size:</span>
+                      <p>{profile.farmerProfile.farmSize} hectares</p>
+                    </div>
+                    
+                    <div>
+                      <span className="font-medium">Farming Experience:</span>
+                      <p>{profile.farmerProfile.farmingExperience} years</p>
+                    </div>
+
+                    {profile.farmerProfile.certifications && profile.farmerProfile.certifications.length > 0 && (
+                      <div>
+                        <span className="font-medium">Certifications:</span>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {profile.farmerProfile.certifications.map((cert, index) => (
+                            <Badge key={index} variant="secondary">
+                              {cert}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No professional details available.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

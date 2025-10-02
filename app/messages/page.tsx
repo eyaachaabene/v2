@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Send, Phone, Video, Search, Plus, Bot, Bell, Settings, MoreVertical, Paperclip, Smile } from "lucide-react"
 import { DashboardNav } from "@/components/dashboard-nav"
+import { useFriends } from "@/hooks/use-friends"
+import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
 
 const conversations = [
   {
@@ -136,22 +139,66 @@ const chatbotSuggestions = [
 ]
 
 export default function MessagesPage() {
-  const [selectedConversation, setSelectedConversation] = useState(conversations[0])
+  const [selectedConversation, setSelectedConversation] = useState<any>(null)
   const [newMessage, setNewMessage] = useState("")
   const [chatbotMessage, setChatbotMessage] = useState("")
+  const [friendConversations, setFriendConversations] = useState<any[]>([])
+  
+  const { friends, isLoading: friendsLoading, getTotalUnreadMessages } = useFriends()
+  const { user } = useAuth()
+  const { toast } = useToast()
+
+  // Convert friends to conversation format
+  useEffect(() => {
+    if (friends) {
+      const conversations = friends.map(friend => ({
+        id: friend._id,
+        name: `${friend.profile.firstName} ${friend.profile.lastName}`,
+        avatar: friend.profile.avatar || "/placeholder-user.jpg",
+        lastMessage: friend.lastMessageAt ? "Continue your conversation..." : "Start a conversation!",
+        time: friend.lastMessageAt ? formatTime(friend.lastMessageAt) : "New",
+        unread: friend.unreadMessages || 0,
+        online: friend.isOnline,
+        type: "friend",
+        location: friend.profile.location
+      }))
+      setFriendConversations(conversations)
+      
+      // Auto-select first conversation if none selected
+      if (!selectedConversation && conversations.length > 0) {
+        setSelectedConversation(conversations[0])
+      }
+    }
+  }, [friends, selectedConversation])
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    
+    if (diff < 60000) return "Now"
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} hour ago`
+    return date.toLocaleDateString()
+  }
+
   const [chatbotHistory, setChatbotHistory] = useState([
     {
       id: 1,
       sender: "AgriBot",
-      content: "Hello Fatma! I'm your farming assistant. How can I help you today?",
+      content: "Hello! I'm your farming assistant. How can I help you today?",
       time: "Now",
       isOwn: false,
     },
   ])
 
   const sendMessage = () => {
-    if (newMessage.trim()) {
-      // Add message logic here
+    if (newMessage.trim() && selectedConversation) {
+      // TODO: Send message via API
+      toast({
+        title: "Message sent!",
+        description: `Your message to ${selectedConversation.name} has been sent.`,
+      })
       setNewMessage("")
     }
   }
@@ -231,14 +278,24 @@ export default function MessagesPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="space-y-1">
-                    {conversations.map((conversation) => (
-                      <div
-                        key={conversation.id}
-                        className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                          selectedConversation.id === conversation.id ? "bg-muted" : ""
-                        }`}
-                        onClick={() => setSelectedConversation(conversation)}
-                      >
+                    {friendsLoading ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        Loading conversations...
+                      </div>
+                    ) : friendConversations.length === 0 ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        <p>No friends to message yet.</p>
+                        <p className="text-sm mt-1">Connect with farmers in the Community to start messaging!</p>
+                      </div>
+                    ) : (
+                      friendConversations.map((conversation) => (
+                        <div
+                          key={conversation.id}
+                          className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                            selectedConversation?.id === conversation.id ? "bg-muted" : ""
+                          }`}
+                          onClick={() => setSelectedConversation(conversation)}
+                        >
                         <div className="flex items-center gap-3">
                           <div className="relative">
                             <Avatar>
@@ -269,36 +326,42 @@ export default function MessagesPage() {
                           </div>
                         </div>
                       </div>
-                    ))}
+                    ))
+                    )}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Chat Area */}
               <Card className="lg:col-span-2 flex flex-col">
-                <CardHeader className="border-b">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage
-                          src={selectedConversation.avatar || "/placeholder.svg"}
-                          alt={selectedConversation.name}
-                        />
-                        <AvatarFallback>
-                          {selectedConversation.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold">{selectedConversation.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedConversation.online ? "Online" : "Last seen 2 hours ago"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
+                {selectedConversation ? (
+                  <>
+                    <CardHeader className="border-b">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarImage
+                              src={selectedConversation.avatar || "/placeholder.svg"}
+                              alt={selectedConversation.name}
+                            />
+                            <AvatarFallback>
+                              {selectedConversation.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="font-semibold">{selectedConversation.name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {selectedConversation.online ? "Online" : "Offline"}
+                              {selectedConversation.location && (
+                                <span> • {selectedConversation.location.city || selectedConversation.location.governorate}</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
                       <Button size="sm" variant="outline">
                         <Phone className="h-4 w-4" />
                       </Button>
@@ -349,6 +412,20 @@ export default function MessagesPage() {
                     </Button>
                   </div>
                 </div>
+                </>
+                ) : (
+                  <CardContent className="flex items-center justify-center h-96">
+                    <div className="text-center text-muted-foreground">
+                      <div className="mb-4">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-2">
+                          <Send className="h-8 w-8" />
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-medium mb-2">Start a conversation</h3>
+                      <p>Connect with farmers in the Community to start messaging!</p>
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             </div>
           </TabsContent>

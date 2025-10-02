@@ -1,178 +1,264 @@
-import { NextRequest, NextResponse } from "next/server"
-import { connectToDatabase } from "@/lib/mongodb"
-import { ObjectId } from "mongodb"
-import jwt from "jsonwebtoken"
+import { NextRequest, NextResponse } from 'next/server'
+import { getDatabase } from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
+import { verifyToken } from '@/lib/auth-middleware'
+import type { UserProfile } from '@/lib/models/User'
 
+// GET - Fetch user profile by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log(`[API] Fetching user profile for ID: ${params.id}`)
+    const db = await getDatabase()
+    const userId = params.id
     
-    const { db } = await connectToDatabase()
-    console.log(`[API] Database connection established`)
-    
-    if (!ObjectId.isValid(params.id)) {
-      console.log(`[API] Invalid ObjectId: ${params.id}`)
+    // Verify the requesting user
+    const tokenPayload = await verifyToken(request)
+    const requestingUserId = tokenPayload?.userId
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(userId)) {
       return NextResponse.json(
-        { error: "Invalid user ID" },
+        { success: false, error: 'Invalid user ID' },
         { status: 400 }
       )
     }
 
-    console.log(`[API] ObjectId is valid: ${params.id}`)
-
-    // Get user with simple query first
-    const user = await db.collection("users").findOne(
-      { _id: new ObjectId(params.id) },
-      { projection: { password: 0 } } // Never include password in response
+    // Find the target user
+    const user = await db.collection('users').findOne(
+      { _id: new ObjectId(userId), isActive: true },
+      {
+        projection: {
+          password: 0, // Never return password
+          'preferences.notifications': 0, // Don't expose notification preferences
+          'verification': 0, // Don't expose verification details
+          'bankDetails': 0 // Don't expose sensitive financial info
+        }
+      }
     )
-    
-    console.log(`[API] User query result:`, user ? 'User found' : 'User not found')
 
     if (!user) {
-      console.log(`[API] User not found in database: ${params.id}`)
       return NextResponse.json(
-        { error: "User not found" },
+        { success: false, error: 'User not found' },
         { status: 404 }
       )
     }
 
-    // Get product count for farmers
-    let productCount = 0
-    if (user.role === 'farmer') {
-      try {
-        productCount = await db.collection("products").countDocuments({ "farmer._id": new ObjectId(params.id) })
-        console.log(`[API] Product count for farmer: ${productCount}`)
-      } catch (error) {
-        console.log(`[API] Error counting products:`, error)
+    // Initialize default values for new social fields if they don't exist
+    const socialProfile = user.socialProfile || {
+      bio: '',
+      coverImage: '',
+      socialLinks: {},
+      achievements: [],
+      skills: [],
+      experienceLevel: 'beginner',
+      profileViews: 0,
+      helpfulAnswers: 0
+    }
+
+    const privacySettings = user.privacySettings || {
+      profileVisibility: 'public',
+      postVisibility: 'public',
+      contactInfoVisibility: 'connections',
+      showConnectionsList: true,
+      allowConnectionRequests: true,
+      allowFollowers: true
+    }
+
+    const socialStats = user.socialStats || {
+      postsCount: 0,
+      connectionsCount: 0,
+      followersCount: 0,
+      followingCount: 0
+    }
+
+    // Check privacy settings and relationship status
+    let connectionStatus: 'none' | 'pending' | 'accepted' | 'blocked' = 'none'
+    let isFollowing = false
+    let isFollowed = false
+    let mutualConnectionsCount = 0
+    
+    if (requestingUserId && requestingUserId !== userId) {
+      // Check connection status
+      const connection = user.connections?.find((conn: any) => 
+        conn.user.toString() === requestingUserId
+      )
+      connectionStatus = connection ? connection.status : 'none'
+      
+      // Check following status
+      isFollowing = user.followers?.some((follower: any) => 
+        follower.user.toString() === requestingUserId
+      ) || false
+      
+      isFollowed = user.following?.some((following: any) => 
+        following.user.toString() === requestingUserId
+      ) || false
+
+      // Calculate mutual connections
+      if (requestingUserId !== userId) {
+        const requestingUser = await db.collection('users').findOne(
+          { _id: new ObjectId(requestingUserId) },
+          { projection: { connections: 1 } }
+        )
+        
+        if (requestingUser?.connections && user.connections) {
+          const requestingUserConnections = requestingUser.connections
+            .filter((conn: any) => conn.status === 'accepted')
+            .map((conn: any) => conn.user.toString())
+            
+          const userConnections = user.connections
+            .filter((conn: any) => conn.status === 'accepted')
+            .map((conn: any) => conn.user.toString())
+            
+          mutualConnectionsCount = requestingUserConnections.filter((connId: string) => 
+            userConnections.includes(connId)
+          ).length
+        }
+      }
+
+      // Increment profile view if different user
+      if (requestingUserId !== userId) {
+        await db.collection('users').updateOne(
+          { _id: new ObjectId(userId) },
+          { $inc: { 'socialProfile.profileViews': 1 } }
+        )
       }
     }
 
-    // Get resource count for suppliers
-    let resourceCount = 0
-    if (user.role === 'supplier') {
-      try {
-        resourceCount = await db.collection("resources").countDocuments({ "supplierId": new ObjectId(params.id) })
-        console.log(`[API] Resource count for supplier: ${resourceCount}`)
-      } catch (error) {
-        console.log(`[API] Error counting resources:`, error)
+    // Determine what the requesting user can see based on privacy settings
+    const canViewProfile = checkProfileVisibility(privacySettings.profileVisibility, connectionStatus, requestingUserId, userId)
+    const canViewPosts = checkPostVisibility(privacySettings.postVisibility, connectionStatus, isFollowing, requestingUserId, userId)
+    const canViewContactInfo = checkContactInfoVisibility(privacySettings.contactInfoVisibility, connectionStatus, requestingUserId, userId)
+
+    if (!canViewProfile) {
+      return NextResponse.json(
+        { success: false, error: 'Profile is private' },
+        { status: 403 }
+      )
+    }
+
+    // Build the response profile
+    const profile: UserProfile = {
+      _id: user._id,
+      profile: {
+        firstName: user.profile.firstName,
+        lastName: user.profile.lastName,
+        phone: canViewContactInfo ? user.profile.phone : '',
+        avatar: user.profile.avatar,
+        location: {
+          governorate: user.profile.location.governorate,
+          city: user.profile.location.city,
+          address: canViewContactInfo ? user.profile.location.address : '',
+          coordinates: user.profile.location.coordinates
+        },
+        dateOfBirth: canViewContactInfo ? user.profile.dateOfBirth : undefined,
+        gender: user.profile.gender,
+        languages: user.profile.languages || [],
+        interests: user.profile.interests || []
+      },
+      socialProfile,
+      socialStats,
+      role: user.role,
+      connectionStatus,
+      isFollowing,
+      isFollowed,
+      mutualConnections: mutualConnectionsCount,
+      canViewProfile,
+      canViewPosts,
+      canViewContactInfo
+    }
+
+    // Add role-specific profiles if visible
+    if (canViewProfile) {
+      if (user.farmerProfile) {
+        profile.farmerProfile = {
+          ...user.farmerProfile,
+          bankDetails: undefined // Never expose bank details
+        }
+      }
+      if (user.buyerProfile) {
+        profile.buyerProfile = user.buyerProfile
+      }
+      if (user.supplierProfile) {
+        profile.supplierProfile = user.supplierProfile
       }
     }
 
-    // Build user profile with stats
-    const userProfile = {
-      ...user,
-      stats: {
-        totalProducts: user.role === 'farmer' ? productCount : 0,
-        totalResources: user.role === 'supplier' ? resourceCount : 0,
-        totalSales: user.profile?.totalSales || 0,
-        rating: user.profile?.rating || 0,
-        reviewCount: user.profile?.reviewCount || 0,
-        yearsExperience: user.profile?.yearsExperience || 0,
-        joinedDate: user.createdAt || new Date()
-      }
-    }
-
-    console.log(`[API] Returning user profile successfully`)
     return NextResponse.json({
-      user: userProfile
+      success: true,
+      profile
     })
+
   } catch (error) {
-    console.error("Error fetching user profile:", error)
+    console.error('Error fetching user profile:', error)
     return NextResponse.json(
-      { error: "Failed to fetch user profile" },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: "Authorization token required" },
-        { status: 401 }
-      )
-    }
+// Helper functions for privacy checks
+function checkProfileVisibility(
+  visibility: string, 
+  connectionStatus: string, 
+  requestingUserId?: string, 
+  targetUserId?: string
+): boolean {
+  if (!requestingUserId || requestingUserId === targetUserId) return true
+  
+  switch (visibility) {
+    case 'public':
+      return true
+    case 'connections':
+      return connectionStatus === 'accepted'
+    case 'private':
+      return false
+    default:
+      return true
+  }
+}
 
-    const token = authHeader.split(' ')[1]
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-    
-    // Check if user is updating their own profile
-    if (decoded.userId !== params.id) {
-      return NextResponse.json(
-        { error: "You can only update your own profile" },
-        { status: 403 }
-      )
-    }
+function checkPostVisibility(
+  visibility: string, 
+  connectionStatus: string, 
+  isFollowing: boolean,
+  requestingUserId?: string, 
+  targetUserId?: string
+): boolean {
+  if (!requestingUserId || requestingUserId === targetUserId) return true
+  
+  switch (visibility) {
+    case 'public':
+      return true
+    case 'connections':
+      return connectionStatus === 'accepted'
+    case 'followers':
+      return isFollowing || connectionStatus === 'accepted'
+    case 'private':
+      return false
+    default:
+      return true
+  }
+}
 
-    if (!ObjectId.isValid(params.id)) {
-      return NextResponse.json(
-        { error: "Invalid user ID" },
-        { status: 400 }
-      )
-    }
-
-    const body = await request.json()
-    const { profile, location } = body
-
-    const { db } = await connectToDatabase()
-
-    const updateData: any = {}
-    
-    if (profile) {
-      updateData.profile = {
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        phone: profile.phone,
-        address: profile.address,
-        bio: profile.bio,
-        avatar: profile.avatar
-      }
-    }
-
-    if (location) {
-      updateData.location = {
-        governorate: location.governorate,
-        city: location.city
-      }
-    }
-
-    updateData.updatedAt = new Date()
-
-    const result = await db.collection("users").updateOne(
-      { _id: new ObjectId(params.id) },
-      { $set: updateData }
-    )
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      )
-    }
-
-    // Fetch updated user profile
-    const updatedUser = await db.collection("users").findOne(
-      { _id: new ObjectId(params.id) },
-      { projection: { password: 0 } }
-    )
-
-    return NextResponse.json({
-      user: updatedUser,
-      message: "Profile updated successfully"
-    })
-  } catch (error) {
-    console.error("Error updating user profile:", error)
-    return NextResponse.json(
-      { error: "Failed to update user profile" },
-      { status: 500 }
-    )
+function checkContactInfoVisibility(
+  visibility: string, 
+  connectionStatus: string, 
+  requestingUserId?: string, 
+  targetUserId?: string
+): boolean {
+  if (!requestingUserId || requestingUserId === targetUserId) return true
+  
+  switch (visibility) {
+    case 'public':
+      return true
+    case 'connections':
+      return connectionStatus === 'accepted'
+    case 'private':
+      return false
+    default:
+      return false
   }
 }

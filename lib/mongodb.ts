@@ -40,3 +40,21 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
   const db = client.db("agri-she")
   return { client, db }
 }
+
+// For Mongoose compatibility
+export async function connectMongoDB() {
+  try {
+    const mongoose = require('mongoose')
+    
+    if (mongoose.connection.readyState >= 1) {
+      return
+    }
+
+    await mongoose.connect(uri, {
+      bufferCommands: true, // Allow buffering to prevent connection timing issues
+    })
+  } catch (error) {
+    console.error('MongoDB connection error:', error)
+    throw error
+  }
+}
