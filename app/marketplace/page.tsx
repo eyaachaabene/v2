@@ -4,6 +4,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { type UserProfile } from "@/lib/auth"
 import { type Product } from "@/hooks/use-products"
+import { useAddToCart } from "@/hooks/use-add-to-cart"
 
 interface Resource {
   _id: string
@@ -75,6 +76,7 @@ interface Resource {
     }
   }
   tags: string[]
+  supplierId: string
   createdAt: string
   updatedAt: string
 }
@@ -88,22 +90,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, MapPin, Star, MessageCircle, Phone, Sprout, Package, Users, Heart, Plus, Edit, Trash2 } from "lucide-react"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { ChatbotWidget } from "@/components/chatbot-widget"
+import Link from "next/link"
 import { useProducts } from "@/hooks/use-products"
 import { useResources } from "@/hooks/use-resources"
+import { useUserResources } from "@/hooks/use-user-resources"
 import { AddProductForm } from "@/components/add-product-form"
 import { AddResourceForm } from "@/components/add-resource-form"
 import { useUserRole } from "@/hooks/use-user-role"
 import { EditProductForm } from "@/components/edit-product-form"
+import { EditResourceForm } from "@/components/edit-resource-form"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function MarketplacePage() {
 	const { user, profile } = useAuth()
+	const { addProductToCart, addResourceToCart } = useAddToCart()
 	const [searchQuery, setSearchQuery] = useState("")
 	const [selectedCategory, setSelectedCategory] = useState("all")
 	const [selectedRegion, setSelectedRegion] = useState("all")
 	const [activeTab, setActiveTab] = useState("products")
 	const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+	const [editingResource, setEditingResource] = useState<Resource | null>(null)
+	const [isEditResourceDialogOpen, setIsEditResourceDialogOpen] = useState(false)
 
 	// Function to extract name from email
 	const getFarmerDisplayName = (farmer: any) => {
@@ -157,6 +165,7 @@ export default function MarketplacePage() {
 		activeTab === "resources" ? selectedCategory : "all",
 		activeTab === "resources" ? selectedRegion : "all"
 	)
+	const { updateResource, deleteResource } = useUserResources()
 	
 	const { isSupplier } = useUserRole()
 	
@@ -181,6 +190,44 @@ export default function MarketplacePage() {
 	const handleProductDeleted = () => {
 		// Refresh the products list
 		window.location.reload()
+	}
+
+	const handleEditResource = (resource: Resource) => {
+		setEditingResource(resource)
+		setIsEditResourceDialogOpen(true)
+	}
+
+	const handleCloseResourceEdit = () => {
+		setIsEditResourceDialogOpen(false)
+		setEditingResource(null)
+	}
+
+	const handleResourceUpdated = async (id: string, data: Partial<Resource>) => {
+		try {
+			await updateResource(id, data)
+			toast.success("Resource updated successfully")
+			setIsEditResourceDialogOpen(false)
+			setEditingResource(null)
+			// Refresh the resources list
+			window.location.reload()
+			return true
+		} catch (error) {
+			console.error("Error updating resource:", error)
+			toast.error("Failed to update resource")
+			return false
+		}
+	}
+
+	const handleResourceDeleted = async (resourceId: string) => {
+		try {
+			await deleteResource(resourceId)
+			toast.success("Resource deleted successfully")
+			// Refresh the resources list
+			window.location.reload()
+		} catch (error) {
+			console.error("Error deleting resource:", error)
+			toast.error("Failed to delete resource")
+		}
 	}
 
 	const productCategories = [
@@ -387,9 +434,13 @@ export default function MarketplacePage() {
 
 												<div className="flex items-center gap-2 text-sm text-muted-foreground">
 													<Sprout className="h-4 w-4" />
-													<span title={product.farmer?.email ? `Email: ${product.farmer.email}` : undefined}>
+													<Link 
+														href={`/profile/${product.farmer?._id}`}
+														className="hover:text-primary hover:underline"
+														title={product.farmer?.email ? `Email: ${product.farmer.email}` : undefined}
+													>
 														{getFarmerDisplayName(product.farmer)}
-													</span>
+													</Link>
 													<span>•</span>
 													<MapPin className="h-4 w-4" />
 													<span>{product.location?.governorate || 'Unknown Location'}</span>
@@ -431,13 +482,20 @@ export default function MarketplacePage() {
 															</>
 														) : (
 															<>
+																<Button 
+																	size="sm" 
+																	onClick={() => addProductToCart(product)}
+																	disabled={product.availability?.status === 'Out of Stock'}
+																>
+																	<Plus className="h-4 w-4 mr-1" />
+																	Add to Cart
+																</Button>
 																<Button size="sm" variant="outline">
 																	<MessageCircle className="h-4 w-4" />
 																</Button>
 																<Button size="sm" variant="outline">
 																	<Phone className="h-4 w-4" />
 																</Button>
-																<Button size="sm">Contact</Button>
 															</>
 														)}
 													</div>
@@ -496,6 +554,22 @@ export default function MarketplacePage() {
 													<span>{resource.location?.governorate || 'Unknown Location'}</span>
 												</div>
 
+												{resource.supplier && (
+													<div className="flex items-center gap-2 text-sm text-muted-foreground">
+														<Users className="h-4 w-4" />
+														<span>Supplied by:</span>
+														<Link 
+															href={`/profile/${resource.supplierId}`}
+															className="hover:text-primary hover:underline font-medium"
+														>
+															{resource.supplier.profile?.firstName && resource.supplier.profile?.lastName 
+																? `${resource.supplier.profile.firstName} ${resource.supplier.profile.lastName}`
+																: 'Supplier'
+															}
+														</Link>
+													</div>
+												)}
+
 												<div className="flex items-center gap-2">
 													<div className="flex items-center gap-1">
 														<Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -537,10 +611,55 @@ export default function MarketplacePage() {
 														)}
 													</div>
 													<div className="flex gap-2">
-														<Button size="sm" variant="outline">
-															<MessageCircle className="h-4 w-4" />
-														</Button>
-														<Button size="sm">Order Now</Button>
+														{/* Debug info - will be removed after testing */}
+														{(() => {
+															console.log('Resource Debug:', {
+																userRole: user?.role,
+																userId: user?._id,
+																resourceSupplierId: resource.supplierId,
+																hasSupplier: !!resource.supplier,
+																isOwner: user?.role === 'supplier' && resource.supplierId === user?._id
+															});
+															return null;
+														})()}
+														
+														{/* Show edit/delete buttons for supplier's own resources */}
+														{user?.role === 'supplier' && resource.supplierId === user?._id ? (
+															<>
+																<Button 
+																	size="sm" 
+																	variant="outline"
+																	onClick={() => handleEditResource(resource)}
+																	className="flex items-center gap-1"
+																>
+																	<Edit className="h-3 w-3" />
+																	Modify
+																</Button>
+																<Button 
+																	size="sm" 
+																	variant="destructive"
+																	onClick={() => handleResourceDeleted(resource._id)}
+																	className="flex items-center gap-1"
+																>
+																	<Trash2 className="h-3 w-3" />
+																	Remove
+																</Button>
+															</>
+														) : (
+															<>
+																<Button 
+																	size="sm" 
+																	onClick={() => addResourceToCart(resource)}
+																	disabled={resource.availability?.status !== 'available'}
+																>
+																	<Plus className="h-4 w-4 mr-1" />
+																	Add to Cart
+																</Button>
+																<Button size="sm" variant="outline">
+																	<MessageCircle className="h-4 w-4" />
+																</Button>
+															</>
+														)}
 													</div>
 												</div>
 											</div>
@@ -563,6 +682,16 @@ export default function MarketplacePage() {
 					onClose={handleCloseEdit}
 					onProductUpdated={handleProductUpdated}
 					onProductDeleted={handleProductDeleted}
+				/>
+			)}
+
+			{/* Edit Resource Dialog */}
+			{editingResource && (
+				<EditResourceForm
+					resource={editingResource}
+					open={isEditResourceDialogOpen}
+					onOpenChange={handleCloseResourceEdit}
+					onUpdate={handleResourceUpdated as any}
 				/>
 			)}
 		</div>

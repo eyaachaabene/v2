@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Auth Storage</title>
+</head>
+<body>
+    <h1>Clear Authentication Storage</h1>
+    <p>Click the button below to clear all authentication data and force a fresh login:</p>
+    <button onclick="clearAuth()">Clear Authentication Data</button>
+    <div id="result"></div>
+
+    <script>
+        function clearAuth() {
+            // Clear localStorage
+            localStorage.clear();
+            
+            // Clear sessionStorage
+            sessionStorage.clear();
+            
+            // Clear cookies by setting them to expire
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            
+            document.getElementById('result').innerHTML = 
+                '<p style="color: green;">✅ All authentication data cleared!</p>' +
+                '<p>Please close this tab and go back to your application to log in again.</p>';
+        }
+    </script>
+</body>
+</html>

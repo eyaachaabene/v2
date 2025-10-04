@@ -2,12 +2,22 @@ import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
+import { CartProvider } from '@/contexts/cart-context'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'Agri-SHE',
+  description: 'Created with Team Agri-SHE',
+  generator: 'Agri-SHE',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/placeholder-logo.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/placeholder-logo.png',
+    shortcut: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
@@ -18,7 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        {children}
+        <CartProvider>
+          {children}
+          <Toaster richColors />
+        </CartProvider>
         <Analytics />
       </body>
     </html>

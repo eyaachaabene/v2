@@ -4,10 +4,14 @@ import { ObjectId } from "mongodb"
 export interface Notification {
   _id?: ObjectId
   userId: ObjectId
-  type: "weather_alert" | "task_reminder" | "opportunity_match" | "system" | "message"
+  type: "weather_alert" | "task_reminder" | "opportunity_match" | "system" | "message" | "price_alert" | "new_order"
   title: string
   message: string
   data?: any
+  marketData?: any
+  productId?: ObjectId
+  resourceId?: ObjectId
+  orderId?: ObjectId
   read: boolean
   priority: "low" | "medium" | "high"
   createdAt: Date

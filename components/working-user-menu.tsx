@@ -84,6 +84,13 @@ export function WorkingUserMenu() {
     router.push('/settings')
   }
 
+  const handleProfile = () => {
+    setIsOpen(false)
+    if (user?._id) {
+      router.push(`/profile/${user._id}`)
+    }
+  }
+
   const getUserDisplayName = () => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName} ${user.lastName}`
@@ -141,6 +148,14 @@ export function WorkingUserMenu() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
           <div className="py-1">
+            <button
+              onClick={handleProfile}
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </button>
+            
             <button
               onClick={handleSettings}
               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

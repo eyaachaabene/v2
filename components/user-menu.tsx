@@ -80,6 +80,12 @@ export function UserMenu() {
     router.push('/settings')
   }
 
+  const handleProfile = () => {
+    if (user?._id) {
+      router.push(`/profile/${user._id}`)
+    }
+  }
+
   const getUserDisplayName = () => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName} ${user.lastName}`
@@ -132,6 +138,10 @@ export function UserMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 z-50">
+        <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
+          <User className="mr-2 h-4 w-4" />
+          <span>Profile</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleSettings} className="cursor-pointer">
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>

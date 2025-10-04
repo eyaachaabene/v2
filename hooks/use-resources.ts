@@ -72,6 +72,7 @@ export interface Resource {
     }
   }
   tags: string[]
+  supplierId: string
   createdAt: string
   updatedAt: string
 }
