@@ -172,6 +172,7 @@ export interface ConnectionRequest {
 
 export interface UserProfile {
   _id: ObjectId
+  email?: string
   profile: User['profile']
   socialProfile: User['socialProfile']
   socialStats: User['socialStats']
@@ -186,6 +187,7 @@ export interface UserProfile {
   canViewProfile: boolean
   canViewPosts: boolean
   canViewContactInfo: boolean
+  createdAt?: string
 }
 
 export interface Product {

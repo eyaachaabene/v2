@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -137,6 +138,7 @@ const learningResources = [
 ]
 
 export default function CommunityPage() {
+  const router = useRouter()
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState("General")
@@ -410,6 +412,11 @@ export default function CommunityPage() {
     }
   }
 
+  const handleMessageUser = (userId: string) => {
+    // Navigate to messages page with the user ID
+    router.push(`/messages?userId=${userId}`)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardNav />
@@ -603,16 +610,27 @@ export default function CommunityPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleConnectUser(post.authorId)}
+                              onClick={() => post.authorId && handleConnectUser(post.authorId)}
                               className="text-xs"
                             >
                               Connect
                             </Button>
                           )}
                           {post.authorId && isFriend(post.authorId) && (
-                            <Badge variant="secondary" className="text-xs">
-                              Connected
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                Connected
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => post.authorId && handleMessageUser(post.authorId)}
+                                className="text-xs"
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                Message
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -814,7 +832,7 @@ export default function CommunityPage() {
                           <AvatarFallback>
                             {user.name
                               .split(" ")
-                              .map((n) => n[0])
+                              .map((n: string) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
@@ -832,14 +850,30 @@ export default function CommunityPage() {
                           </div>
                         </div>
                       </div>
-                      <Button 
-                        size="sm" 
-                        className="w-full"
-                        onClick={() => handleConnectUser(user.id)}
-                        disabled={isFriend(user.id)}
-                      >
-                        {isFriend(user.id) ? "Connected" : "Connect"}
-                      </Button>
+                      {!isFriend(user.id) ? (
+                        <Button 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => handleConnectUser(user.id)}
+                        >
+                          Connect
+                        </Button>
+                      ) : (
+                        <div className="flex flex-col gap-2 w-full">
+                          <Badge variant="secondary" className="text-xs justify-center">
+                            Connected
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="w-full"
+                            onClick={() => handleMessageUser(user.id)}
+                          >
+                            <MessageCircle className="h-3 w-3 mr-1" />
+                            Message
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

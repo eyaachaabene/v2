@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   title: 'Agri-SHE',
   description: 'Created with Team Agri-SHE',
   generator: 'Agri-SHE',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/placeholder-logo.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/placeholder-logo.png',
+    shortcut: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({

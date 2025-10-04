@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDatabase } from '@/lib/mongodb'
+import { connectToDatabase } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { verifyToken } from '@/lib/auth-middleware'
 import type { UserProfile } from '@/lib/models/User'
@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const db = await getDatabase()
+    const { db } = await connectToDatabase()
     const userId = params.id
     
     // Verify the requesting user
@@ -141,6 +141,7 @@ export async function GET(
     // Build the response profile
     const profile: UserProfile = {
       _id: user._id,
+      email: canViewContactInfo ? user.email : undefined,
       profile: {
         firstName: user.profile.firstName,
         lastName: user.profile.lastName,
@@ -166,7 +167,8 @@ export async function GET(
       mutualConnections: mutualConnectionsCount,
       canViewProfile,
       canViewPosts,
-      canViewContactInfo
+      canViewContactInfo,
+      createdAt: user.createdAt ? user.createdAt.toISOString() : undefined
     }
 
     // Add role-specific profiles if visible
