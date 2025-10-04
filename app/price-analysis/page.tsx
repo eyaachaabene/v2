@@ -78,7 +78,7 @@ export default function PriceAnalysisPage() {
           recommendation: '',
           status: 'volatile'
         },
-        createdAt: alert.createdAt,
+        createdAt: alert.createdAt instanceof Date ? alert.createdAt.toISOString() : alert.createdAt,
         read: alert.read
       }))
       setNotifications(formattedAlerts)
@@ -87,8 +87,12 @@ export default function PriceAnalysisPage() {
 
   const fetchNotifications = async () => {
     try {
+      setLoading(true)
       const token = localStorage.getItem('auth_token')
-      if (!token) return
+      if (!token) {
+        setLoading(false)
+        return
+      }
 
       const response = await fetch('/api/price-analysis', {
         headers: {
@@ -99,9 +103,13 @@ export default function PriceAnalysisPage() {
       if (response.ok) {
         const data = await response.json()
         setNotifications(data.notifications || [])
+      } else {
+        console.error('Failed to fetch notifications:', response.statusText)
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -217,6 +225,7 @@ export default function PriceAnalysisPage() {
             <Button 
               variant="outline"
               onClick={async () => {
+                setLoading(true)
                 try {
                   const response = await fetch('/api/price-analysis/demo')
                   if (response.ok) {
@@ -225,14 +234,17 @@ export default function PriceAnalysisPage() {
                     setNotifications(data.notifications || [])
                     toast.success('Demo analysis loaded!')
                   } else {
-                    toast.error("Failed to load demo")
+                    const errorData = await response.json().catch(() => ({}))
+                    toast.error(errorData.error || "Failed to load demo")
                   }
                 } catch (error) {
                   console.error('Error loading demo:', error)
                   toast.error("Error loading demo")
+                } finally {
+                  setLoading(false)
                 }
               }}
-              disabled={analyzing}
+              disabled={analyzing || loading}
             >
               Load Demo
             </Button>
@@ -321,7 +333,12 @@ export default function PriceAnalysisPage() {
                 <CardTitle>Price Alerts</CardTitle>
               </CardHeader>
               <CardContent>
-                {notifications.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-4">
+                    <RefreshCw className="h-8 w-8 text-gray-300 mx-auto mb-2 animate-spin" />
+                    <p className="text-sm text-gray-600">Loading alerts...</p>
+                  </div>
+                ) : notifications.length === 0 ? (
                   <div className="text-center py-4">
                     <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">No price alerts yet</p>

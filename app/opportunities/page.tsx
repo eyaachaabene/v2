@@ -10,8 +10,11 @@ import { DashboardNav } from "@/components/dashboard-nav"
 import { MapPin, Calendar, Users, Briefcase, Search, Clock, DollarSign, Building, GraduationCap, Loader2 } from "lucide-react"
 import { useOpportunities } from "@/hooks/use-opportunities"
 import { OpportunityCard } from "@/components/opportunity-card"
+import { AddOpportunityForm } from "@/components/add-opportunity-form"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function OpportunitiesPage() {
+  const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
   const [locationFilter, setLocationFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
@@ -67,11 +70,16 @@ export default function OpportunitiesPage() {
 
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Opportunities Hub</h1>
-          <p className="text-muted-foreground">
-            Discover jobs, training programs, and partnership opportunities in agriculture
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Opportunities Hub</h1>
+            <p className="text-muted-foreground">
+              Discover jobs, training programs, and partnership opportunities in agriculture
+            </p>
+          </div>
+          {user && (user.role === 'farmer' || user.role === 'supplier') && (
+            <AddOpportunityForm onSuccess={() => refetch()} />
+          )}
         </div>
 
         {/* Filters */}

@@ -20,13 +20,47 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Opportunity not found" }, { status: 404 })
     }
 
+    // Fetch provider information if postedBy exists
+    let provider = null
+    if (opportunity.postedBy) {
+      const providerUser = await db.collection("users").findOne(
+        { _id: new ObjectId(opportunity.postedBy) },
+        { 
+          projection: { 
+            _id: 1, 
+            'profile.firstName': 1, 
+            'profile.lastName': 1,
+            'profile.avatar': 1,
+            email: 1,
+            role: 1
+          } 
+        }
+      )
+      if (providerUser) {
+        provider = {
+          _id: providerUser._id.toString(),
+          profile: {
+            firstName: providerUser.profile?.firstName || '',
+            lastName: providerUser.profile?.lastName || ''
+          }
+        }
+      }
+    }
+
     // Increment view count
     await db.collection("opportunities").updateOne(
       { _id: new ObjectId(params.id) },
       { $inc: { viewCount: 1 } }
     )
 
-    return NextResponse.json({ opportunity }, { status: 200 })
+    const responseData = {
+      ...opportunity,
+      _id: opportunity._id.toString(),
+      providerId: opportunity.postedBy?.toString(),
+      provider
+    }
+
+    return NextResponse.json({ opportunity: responseData }, { status: 200 })
   } catch (error) {
     console.error("Error fetching opportunity:", error)
     return NextResponse.json({ error: "Failed to fetch opportunity" }, { status: 500 })

@@ -91,7 +91,7 @@ export function DashboardNav() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <NotificationBell />
+            
             <CartSheet />
             
             {(user?.role === 'farmer' || user?.role === 'supplier') ? (

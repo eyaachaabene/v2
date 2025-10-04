@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ interface OpportunityCardProps {
 }
 
 export function OpportunityCard({ opportunity, onApplySuccess }: OpportunityCardProps) {
+  const router = useRouter()
   const [showApplyModal, setShowApplyModal] = useState(false)
   const { applied, application } = useApplicationStatus(opportunity._id?.toString() || "")
   const { save, remove, loading: saveLoading } = useSaveOpportunity()
@@ -169,7 +171,12 @@ export function OpportunityCard({ opportunity, onApplySuccess }: OpportunityCard
                 Apply Now
               </Button>
             )}
-            <Button variant="outline">View Details</Button>
+            <Button 
+              variant="outline"
+              onClick={() => router.push(`/opportunities/${opportunity._id}`)}
+            >
+              View Details
+            </Button>
           </div>
         </CardContent>
       </Card>
