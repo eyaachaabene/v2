@@ -19,7 +19,7 @@ export async function verifyToken(request: NextRequest): Promise<TokenPayload | 
 
     // If no Authorization header, try to get token from cookies
     if (!token) {
-      token = request.cookies.get("auth_token")?.value || null
+      token = request.cookies.get("auth-token")?.value || request.cookies.get("auth_token")?.value || null
     }
 
     if (!token) {

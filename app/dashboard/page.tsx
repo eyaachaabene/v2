@@ -60,10 +60,17 @@ export default function DashboardPage() {
     return null // Will redirect to login
   }
 
-  const soilMoisture = sensors.find((s) => s.type === "soil_moisture")?.lastReading?.value || 68
-  const temperature = sensors.find((s) => s.type === "temperature")?.lastReading?.value || 24
+  const soilMoisture = Array.isArray(sensors)
+    ? sensors.find((s) => s.type === "soil_moisture")?.lastReading?.value
+    : undefined;
+  const temperature = Array.isArray(sensors)
+    ? sensors.find((s) => s.type === "temperature")?.lastReading?.value
+    : undefined;
+  const soilMoistureValue = soilMoisture ?? 68;
+  const temperatureValue = temperature ?? 24;
   const activeTasks = stats?.activeTasks || 3
   const totalRevenue = stats?.totalRevenue || 2450
+  // Use soilMoistureValue and temperatureValue in the UI below
 
   return (
     <div className="min-h-screen bg-background">
@@ -420,13 +427,13 @@ export default function DashboardPage() {
                   <CardDescription>Real-time soil conditions across your fields</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {sensors.length === 0 ? (
+                  {Array.isArray(sensors) && sensors.length === 0 ? (
                     <div className="text-center py-8">
                       <Sprout className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                       <p className="text-muted-foreground">No sensors connected yet</p>
                     </div>
                   ) : (
-                    sensors.map((sensor) => (
+                    (Array.isArray(sensors) ? sensors : []).map((sensor) => (
                       <div key={sensor._id} className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">{sensor.name}</span>
